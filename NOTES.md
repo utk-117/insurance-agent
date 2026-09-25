@@ -15,6 +15,13 @@
 - **Sarvam STT**: `saaras:v3`, `mode=translit` — romanised output ("claim kaise milega") so the Hinglish keywords
   in `topic_router.json` match. Switch to `codemix` with `SARVAM_STT_MODE` if Devanagari is preferred.
 - **Sarvam TTS**: `bulbul:v3`, speaker `priya` (the persona is Asha), mp3 output. v3 has no pitch/loudness/preprocessing.
+- **Router keyword matching**: keywords of 4 characters or fewer ("war", "tax", "exit", "gift") need word
+  boundaries (optional plural "s"); longer keywords match as substrings, as `topic_router.json` specifies. Without
+  this, "war" matched "aware" and "exit" matched "existing". Done in code; no data files changed.
+- **Shortlist**: an unknown `income_band` fails a hard `gate` (ICICI Assured Savings isn't pitched until the band
+  is known to be 25L+). A `soft_gate` sorts the product below un-gated ones but never drops it. A volunteered
+  `preferred_insurer` puts that insurer's products first and lifts the one-per-insurer rule. A bare insurer
+  name in the transcript ("the HDFC one") resolves to that insurer's shortlisted product.
 - **Claude**: `claude-opus-5`, `output_config.effort=low`, structured output via `output_config.format`,
   static system blocks marked `cache_control`.
 
