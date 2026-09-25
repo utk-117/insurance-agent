@@ -1,0 +1,358 @@
+{
+  "_meta": {
+    "purpose": "Maps customer needs (from discovery) to the specific product features that serve them, so the pitch is need -> benefit, not a feature dump. Used by the shortlister (ranking) and the LLM (pitch wording).",
+    "source": "Derived only from cards.json key_benefits / pitch_line / ideal_for (which quote the official brochures). 'topic' points to sections/<product_id>.json for the exact wording to load when the customer asks for detail.",
+    "rules": [
+      "Pitch a feature only if it appears here or in the product's card/sections.",
+      "Say 'if declared' / 'not guaranteed' whenever a feature is marked guaranteed=false.",
+      "'gate' conditions are applied in code before shortlisting; never speak the gate figure as a price.",
+      "'soft_gate' conditions only lower the ranking; they never exclude a product."
+    ]
+  },
+  "needs": {
+    "family_income_protection": {
+      "label": "Protect my family's income if something happens to me",
+      "discovery_goal": "pure_protection",
+      "listen_for": [
+        "family ka kya hoga",
+        "income replace",
+        "dependants",
+        "wife/kids depend on me",
+        "secure my family"
+      ]
+    },
+    "loan_cover": {
+      "label": "Make sure my loans don't fall on my family",
+      "discovery_goal": "pure_protection",
+      "listen_for": [
+        "home loan",
+        "EMI",
+        "loan chal raha hai",
+        "car loan"
+      ]
+    },
+    "growing_responsibilities": {
+      "label": "Cover that grows as life changes (marriage, children, home)",
+      "discovery_goal": "pure_protection",
+      "listen_for": [
+        "shaadi hone wali hai",
+        "baby",
+        "planning a family",
+        "new house",
+        "responsibilities badh rahi hain"
+      ]
+    },
+    "premium_back": {
+      "label": "Protection, but I don't want to 'lose' my premiums",
+      "discovery_goal": "pure_protection",
+      "listen_for": [
+        "paisa wapas",
+        "money back",
+        "premium waste",
+        "kuch nahi milta term mein"
+      ]
+    },
+    "guaranteed_second_income": {
+      "label": "A guaranteed extra income later (retirement top-up, second income)",
+      "discovery_goal": "savings_protection",
+      "listen_for": [
+        "retirement",
+        "pension",
+        "monthly income",
+        "second income",
+        "guaranteed"
+      ]
+    },
+    "lump_sum_goal": {
+      "label": "A lump sum for a known goal (child's education or marriage, a corpus)",
+      "discovery_goal": "savings_protection",
+      "listen_for": [
+        "bachche ki padhai",
+        "education",
+        "shaadi",
+        "corpus",
+        "ek saath paisa"
+      ]
+    },
+    "lifelong_legacy": {
+      "label": "Lifelong cover and something to leave for my children",
+      "discovery_goal": "savings_protection",
+      "listen_for": [
+        "legacy",
+        "bachchon ke liye chhod ke jaana",
+        "whole life",
+        "100 saal tak"
+      ]
+    }
+  },
+  "products": {
+    "sbi-smart-shield-plus": {
+      "family_income_protection": [
+        {
+          "feature": "Pure term cover at a low cost; nominee can take the death benefit as a lump sum, instalments or both",
+          "topic": "death_benefit",
+          "guaranteed": true
+        }
+      ],
+      "growing_responsibilities": [
+        {
+          "feature": "Increasing Cover option: cover rises 5% of sum assured a year, up to 200%",
+          "topic": "plan_options",
+          "guaranteed": true
+        },
+        {
+          "feature": "Level Cover with Future Proofing: cover can step up at marriage, child birth or home purchase",
+          "topic": "plan_options",
+          "guaranteed": true
+        },
+        {
+          "feature": "Optional Better Half Benefit: spouse gets their own cover if the policyholder dies",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ],
+      "lifelong_legacy": [
+        {
+          "feature": "Whole-life cover till age 100 with Limited Pay",
+          "topic": "plan_options",
+          "guaranteed": true
+        }
+      ]
+    },
+    "sbi-smart-swadhan-supreme": {
+      "family_income_protection": [
+        {
+          "feature": "Death benefit: the higher of Basic Sum Assured, 11x annualised premium, or 105% of premiums paid",
+          "topic": "death_benefit",
+          "guaranteed": true
+        }
+      ],
+      "premium_back": [
+        {
+          "feature": "100% of total premiums paid returned as a lump sum if you survive the policy term",
+          "topic": "maturity_benefit",
+          "guaranteed": true
+        }
+      ]
+    },
+    "sbi-smart-platina-plus": {
+      "guaranteed_second_income": [
+        {
+          "feature": "Pay for 7, 8 or 10 years, then a fixed guaranteed income for 15-30 years",
+          "topic": "maturity_benefit",
+          "guaranteed": true
+        },
+        {
+          "feature": "110% of total premiums paid returned at the end",
+          "topic": "maturity_benefit",
+          "guaranteed": true
+        },
+        {
+          "feature": "Guaranteed Income option: income continues to the nominee after death",
+          "topic": "plan_options",
+          "guaranteed": true
+        }
+      ],
+      "lump_sum_goal": [
+        {
+          "feature": "Can be bought for a child from 30 days of age, with a parent as proposer",
+          "topic": "key_features",
+          "guaranteed": true
+        }
+      ]
+    },
+    "sbi-smart-bachat-plus": {
+      "lump_sum_goal": [
+        {
+          "feature": "Lump sum at maturity: Sum Assured + vested bonuses + terminal bonus, if declared",
+          "topic": "maturity_benefit",
+          "guaranteed": false
+        },
+        {
+          "feature": "Life Plus option: on accidental total permanent disability, Sum Assured is paid and future premiums are waived",
+          "topic": "plan_options",
+          "guaranteed": true
+        }
+      ]
+    },
+    "icici-iprotect-smart-plus": {
+      "soft_gate": {
+        "income_band": [
+          "<5L"
+        ],
+        "reason": "minimum sum assured is ₹50 lakh per the card; rank lower for the lowest income band and let the advisor judge. Never say this as a price."
+      },
+      "family_income_protection": [
+        {
+          "feature": "Large term cover (₹50 lakh and above), up to age 85 or whole life to 99",
+          "topic": "key_features",
+          "guaranteed": true
+        },
+        {
+          "feature": "₹3 lakh paid on claim intimation for covers of ₹1 crore or more, after 3 policy years",
+          "topic": "claims",
+          "guaranteed": true
+        },
+        {
+          "feature": "Terminal illness diagnosis pays the death benefit early",
+          "topic": "death_benefit",
+          "guaranteed": true
+        }
+      ],
+      "growing_responsibilities": [
+        {
+          "feature": "Raise cover at marriage, child birth or a home loan (Regular Pay)",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        },
+        {
+          "feature": "Premium Break after 5 years if money is tight",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ],
+      "loan_cover": [
+        {
+          "feature": "Cover can be raised when you take a home loan (Regular Pay)",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ],
+      "premium_back": [
+        {
+          "feature": "Smart Exit: total premiums back after 25 policy years if aged 60+",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ]
+    },
+    "icici-gift-pro": {
+      "guaranteed_second_income": [
+        {
+          "feature": "Pay for 5-12 years, then a guaranteed income for 5 to 30 years, level or rising 5% a year",
+          "topic": "maturity_benefit",
+          "guaranteed": true
+        },
+        {
+          "feature": "Income continues to the family if the life assured dies during the income period",
+          "topic": "death_benefit",
+          "guaranteed": true
+        }
+      ],
+      "lump_sum_goal": [
+        {
+          "feature": "MoneyBack: choose a lump sum of 0-200% of total annual premiums and the year you receive it",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ]
+    },
+    "icici-assured-savings": {
+      "gate": {
+        "income_band": [
+          "25L+"
+        ],
+        "reason": "eligibility floor in the brochure; never say the figure as a price"
+      },
+      "lump_sum_goal": [
+        {
+          "feature": "Guaranteed Additions every year of 9-11% of premiums paid, plus a guaranteed lump sum at maturity",
+          "topic": "maturity_benefit",
+          "guaranteed": true
+        },
+        {
+          "feature": "Life cover for the full term",
+          "topic": "death_benefit",
+          "guaranteed": true
+        }
+      ]
+    },
+    "hdfc-c2p-supreme": {
+      "family_income_protection": [
+        {
+          "feature": "Term cover up to age 85; terminal illness diagnosis pays out early",
+          "topic": "death_benefit",
+          "guaranteed": true
+        },
+        {
+          "feature": "Immediate payout on claim intimation",
+          "topic": "claims",
+          "guaranteed": true
+        }
+      ],
+      "loan_cover": [
+        {
+          "feature": "Life Goal option: cover reduces over time, for example to match a loan",
+          "topic": "plan_options",
+          "guaranteed": true
+        }
+      ],
+      "growing_responsibilities": [
+        {
+          "feature": "Life option can increase cover up to 200% over the term (variants B and C)",
+          "topic": "plan_options",
+          "guaranteed": true
+        },
+        {
+          "feature": "Add-ons for spouse cover and Parent Secure",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ],
+      "premium_back": [
+        {
+          "feature": "Optional Return of Premium: 100% of premiums paid back on survival (Life and Life Plus)",
+          "topic": "optional_benefits",
+          "guaranteed": true
+        }
+      ]
+    },
+    "hdfc-sanchay-plus": {
+      "guaranteed_second_income": [
+        {
+          "feature": "Guaranteed income for 10-12 years, 25-30 years, or for life till age 99",
+          "topic": "plan_options",
+          "guaranteed": true
+        },
+        {
+          "feature": "Life Long and Long Term Income options also return total premiums paid at the end of the payout",
+          "topic": "maturity_benefit",
+          "guaranteed": true
+        }
+      ],
+      "lump_sum_goal": [
+        {
+          "feature": "Guaranteed Maturity option: a guaranteed lump sum",
+          "topic": "plan_options",
+          "guaranteed": true
+        },
+        {
+          "feature": "Can cover a child from 30 days of age",
+          "topic": "key_features",
+          "guaranteed": true
+        }
+      ]
+    },
+    "hdfc-sanchay-par-advantage": {
+      "lifelong_legacy": [
+        {
+          "feature": "Life cover up to age 100, with a lump sum at maturity: Sum Assured on Maturity + accrued bonuses + terminal bonus, if declared",
+          "topic": "maturity_benefit",
+          "guaranteed": false
+        }
+      ],
+      "guaranteed_second_income": [
+        {
+          "feature": "Deferred Income option: guaranteed income for up to 25 years after the premium term, plus cash bonuses if declared",
+          "topic": "plan_options",
+          "guaranteed": true
+        },
+        {
+          "feature": "Immediate Income option: cash bonus every year from year one, if declared",
+          "topic": "plan_options",
+          "guaranteed": false
+        }
+      ]
+    }
+  }
+}

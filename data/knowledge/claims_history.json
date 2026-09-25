@@ -1,0 +1,166 @@
+{
+  "_meta": {
+    "description": "Individual death claims track record per insurer (life). Percentages are of total claims for the year (pending at start + intimated). Amounts in Rs crore. Paid % values cross-checked against IRDAI's own percentage rows.",
+    "source": {
+      "publication": "IRDAI Handbook on Indian Insurance Statistics 2024-25",
+      "table": "Table 15: Individual Death Claims of Life Insurers - Insurer-wise",
+      "file": "Part I.xlsx, sheet '15'",
+      "url": "https://irdai.gov.in/handbook-of-indian-insurance"
+    },
+    "extracted_on": "2026-09-25",
+    "how_to_speak": "Quote paid_pct_by_amount and paid_pct_by_number together, with the FY and 'as per IRDAI data'. Past record does not guarantee any individual claim."
+  },
+  "insurers": [
+    {
+      "insurer": "SBI Life",
+      "insurer_slug": "sbi-life",
+      "years": [
+        {
+          "fy": "2022-23",
+          "total_claims": 36896,
+          "total_amount_cr": 1766.28,
+          "paid_count": 35807,
+          "paid_amount_cr": 1676.95,
+          "paid_pct_by_number": 97.05,
+          "paid_pct_by_amount": 94.94,
+          "repudiated_pct_by_number": 2.73,
+          "repudiated_pct_by_amount": 4.25,
+          "pending_pct_by_number": 0.09,
+          "pending_pct_by_amount": 0.27,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2022-23"
+        },
+        {
+          "fy": "2023-24",
+          "total_claims": 38397,
+          "total_amount_cr": 2029.32,
+          "paid_count": 37724,
+          "paid_amount_cr": 1948.91,
+          "paid_pct_by_number": 98.25,
+          "paid_pct_by_amount": 96.04,
+          "repudiated_pct_by_number": 1.37,
+          "repudiated_pct_by_amount": 2.66,
+          "pending_pct_by_number": 0.31,
+          "pending_pct_by_amount": 1.16,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2023-24"
+        },
+        {
+          "fy": "2024-25",
+          "total_claims": 44949,
+          "total_amount_cr": 2622.33,
+          "paid_count": 44205,
+          "paid_amount_cr": 2497.94,
+          "paid_pct_by_number": 98.34,
+          "paid_pct_by_amount": 95.26,
+          "repudiated_pct_by_number": 1.17,
+          "repudiated_pct_by_amount": 2.92,
+          "pending_pct_by_number": 0.37,
+          "pending_pct_by_amount": 1.54,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2024-25"
+        }
+      ],
+      "notes": [
+        "FY 2024-25 figures exclude Sahara India Life (SILIC), whose business was transferred to SBI Life by IRDAI order dated 2.6.2023."
+      ]
+    },
+    {
+      "insurer": "ICICI Prudential Life",
+      "insurer_slug": "icici-prudential-life",
+      "years": [
+        {
+          "fy": "2022-23",
+          "total_claims": 14333,
+          "total_amount_cr": 2142.35,
+          "paid_count": 13656,
+          "paid_amount_cr": 1949.7,
+          "paid_pct_by_number": 95.28,
+          "paid_pct_by_amount": 91.01,
+          "repudiated_pct_by_number": 4.45,
+          "repudiated_pct_by_amount": 8.5,
+          "pending_pct_by_number": 0.14,
+          "pending_pct_by_amount": 0.32,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2022-23"
+        },
+        {
+          "fy": "2023-24",
+          "total_claims": 13523,
+          "total_amount_cr": 1890.42,
+          "paid_count": 13411,
+          "paid_amount_cr": 1866.88,
+          "paid_pct_by_number": 99.17,
+          "paid_pct_by_amount": 98.75,
+          "repudiated_pct_by_number": 0.8,
+          "repudiated_pct_by_amount": 1.17,
+          "pending_pct_by_number": 0.02,
+          "pending_pct_by_amount": 0.01,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2023-24"
+        },
+        {
+          "fy": "2024-25",
+          "total_claims": 12405,
+          "total_amount_cr": 1849.79,
+          "paid_count": 12319,
+          "paid_amount_cr": 1813.95,
+          "paid_pct_by_number": 99.31,
+          "paid_pct_by_amount": 98.06,
+          "repudiated_pct_by_number": 0.66,
+          "repudiated_pct_by_amount": 1.67,
+          "pending_pct_by_number": 0.03,
+          "pending_pct_by_amount": 0.23,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2024-25"
+        }
+      ],
+      "notes": []
+    },
+    {
+      "insurer": "HDFC Life",
+      "insurer_slug": "hdfc-life",
+      "years": [
+        {
+          "fy": "2022-23",
+          "total_claims": 17558,
+          "total_amount_cr": 1440.2,
+          "paid_count": 17451,
+          "paid_amount_cr": 1389.9,
+          "paid_pct_by_number": 99.39,
+          "paid_pct_by_amount": 96.51,
+          "repudiated_pct_by_number": 0.59,
+          "repudiated_pct_by_amount": 3.11,
+          "pending_pct_by_number": 0.02,
+          "pending_pct_by_amount": 0.38,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2022-23"
+        },
+        {
+          "fy": "2023-24",
+          "total_claims": 19436,
+          "total_amount_cr": 1655.12,
+          "paid_count": 19338,
+          "paid_amount_cr": 1584.0,
+          "paid_pct_by_number": 99.5,
+          "paid_pct_by_amount": 95.7,
+          "repudiated_pct_by_number": 0.46,
+          "repudiated_pct_by_amount": 3.61,
+          "pending_pct_by_number": 0.04,
+          "pending_pct_by_amount": 0.69,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2023-24"
+        },
+        {
+          "fy": "2024-25",
+          "total_claims": 19729,
+          "total_amount_cr": 2103.16,
+          "paid_count": 19666,
+          "paid_amount_cr": 2060.27,
+          "paid_pct_by_number": 99.68,
+          "paid_pct_by_amount": 97.96,
+          "repudiated_pct_by_number": 0.29,
+          "repudiated_pct_by_amount": 1.86,
+          "pending_pct_by_number": 0.03,
+          "pending_pct_by_amount": 0.18,
+          "source_ref": "IRDAI Handbook 2024-25, Table 15, FY 2024-25"
+        }
+      ],
+      "notes": [
+        "Exide Life merged into HDFC Life effective end of day 14 October 2022."
+      ]
+    }
+  ]
+}

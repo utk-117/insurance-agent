@@ -1,0 +1,8 @@
+{
+  "_meta": {"purpose": "Join key between cards.json (insurer name) and claims_history.json / data/insurers/<slug>/insurer.md (slug)."},
+  "by_name": {
+    "SBI Life": "sbi-life",
+    "ICICI Prudential Life": "icici-prudential-life",
+    "HDFC Life": "hdfc-life"
+  }
+}

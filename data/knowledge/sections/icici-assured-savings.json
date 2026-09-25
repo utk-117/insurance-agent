@@ -1,0 +1,139 @@
+{
+  "product_id": "icici-assured-savings",
+  "source_file": "ICICI Pru Assured Savings Insurance Plan.pdf",
+  "sections": [
+    {
+      "topic": "key_features",
+      "available": true,
+      "text": "Key benefits\nICICI Pru Assured Savings Insurance Plan provides you:\n} Guaranteed# Additions: Every year either 9%, 10% or 11% of total premiums paid will\nbe added to your policy benefits depending on your policy term\n} Guaranteed# Maturity Benefit (GMB): A guaranteed# lump sum payable at the end\nof the policy term\n} Flexibility: Choose premium payment term and policy term as per your need\n} Protection: Get life cover for the entire policy term",
+      "pages": [
+        3
+      ]
+    },
+    {
+      "topic": "plan_options",
+      "available": false,
+      "text": null,
+      "pages": [],
+      "note": "Single plan; the customer chooses the premium payment term and policy term. These cannot be changed later."
+    },
+    {
+      "topic": "death_benefit",
+      "available": true,
+      "text": "Death benefit\nOn death of the life assured during the policy term, for a premium paying or fully paid policy T&C6, the following will be\npayable:\nDeath Benefit is equal to A or B or C, whichever is highest\nWhere,\nA= Sum Assured plus accrued Guaranteed Additions\nB= GMB plus accrued Guaranteed Additions\nC= Minimum Death Benefit\nSum Assured on death is equal to 10 times annualized premium.\nMinimum Death Benefit is equal to 105% of sum of premiums paid till date (excluding extra mortality premiums,\nGoods & Services Tax and Cess (if any).\nOn payment of Death Benefit to the claimant, the policy will terminate and all rights, benefits and interests under the\npolicy will stand extinguished.",
+      "pages": [
+        8
+      ]
+    },
+    {
+      "topic": "maturity_benefit",
+      "available": true,
+      "text": "Maturity benefit\nOn survival of the life assured till the end of the policy term provided all due premiums have been paid, the following\namount will be payable:\nMaturity Benefit = Accrued Guaranteed Additions + Guaranteed Maturity Benefit (GMB)\nGuaranteed Additions\nGuaranteed Additions are payable on Maturity and are considered in the calculation of Death Benefit.\nGuaranteed Additions (GAs) will be added to the policy at the end of every policy year if all due premiums have been\npaid. Each Guaranteed Addition is equal to Guaranteed Addition rate multiplied with the sum of premiums paid till date\n(excluding extra mortality premiums, Goods & Services Tax and Cess (if any). GA rate depends on policy term as below:\nTerm\nGuaranteed Addition rate\n10 years\n9%\n12 or 15 years\n10%\n16 or 20 years\n11%\n\nGuaranteed Maturity Benefit\nYour GMB will be set at policy inception and will depend on policy term, premium, premium payment term, age and\ngender. Your GMB may be lower than your Sum Assured.",
+      "pages": [
+        5,
+        6
+      ],
+      "note": "The brochure's premium-per-₹1000-GMB rate table has been left out on purpose; never quote maturity amounts."
+    },
+    {
+      "topic": "optional_benefits",
+      "available": false,
+      "text": null,
+      "pages": [],
+      "note": "No optional benefits in the brochure."
+    },
+    {
+      "topic": "riders",
+      "available": false,
+      "text": null,
+      "pages": [],
+      "note": "No riders are mentioned in the brochure."
+    },
+    {
+      "topic": "free_look",
+      "available": true,
+      "text": "2. Free look period: If you are not satisfied with the terms and conditions of the policy, please return the policy\ndocument to the Company for cancellation within\n}\n}\n15 days from the date of receipt of the policy document , if the policy is not purchased through Distance mode*\n30 days from the date of receipt of the policy document, in case of electronic policies and policies sourced\nthrough Distance Mode.\nOn cancellation of the policy during the free look period, we will return the premium subject to the deduction of:\na. Stamp duty under the policy,\nb. Expenses borne by the Company on medical examination, if any\nc.\nProportionate risk premium for the period of cover\nThe policy shall terminate on payment of this amount and all rights, benefits and interests under this policy will\nstand extinguished.\n*Distance mode includes every activity of solicitation (including lead generation) and sale of insurance products\nthrough the following modes: (i) Voice mode, which includes telephone-calling (ii) Short Messaging Service (SMS)\n(iii) Electronic mode, which includes e-mail, internet and interactive television (DTH) (iv) Physical mode, which\nincludes direct postal mail and newspaper & magazine inserts and (v) Solicitation through any means of\ncommunication other than in person.",
+      "pages": [
+        12
+      ]
+    },
+    {
+      "topic": "grace_period",
+      "available": true,
+      "text": "4. Grace Period: If the policyholder is unable to pay an installment premium by the due date, a grace period of 15\ndays will be given for payment of due installment premium for monthly frequency, and 30 days will be given for\npayment of due installment premium for any other frequency, commencing from the premium due date. The life\ncover continues during the grace period. In case of Death of Life Assured during the grace period, the Company\nwill pay the applicable Death Benefit.\nIf the premium is not paid within the grace period before the policy acquires a surrender value, the policy shall\nlapse and cover will cease. If the policy is not revived within the revival period, then the policy shall foreclose and\nall rights and benefits under the policy shall stand extinguished.",
+      "pages": [
+        12,
+        13
+      ]
+    },
+    {
+      "topic": "suicide_exclusion",
+      "available": true,
+      "text": "1. Suicide clause: In case of death due to suicide within 12 months from the date of commencement of risk under the\npolicy or from the date of Revival of the policy, as applicable, the Claimant shall be entitled to 80% of the total\npremiums paid till the date of death or the Surrender Value available as on the date of death whichever is higher,\nprovided the policy is in force. The Policy will terminate on making such a payment and all rights, benefits and\ninterests under the Policy will stand extinguished.",
+      "pages": [
+        12
+      ]
+    },
+    {
+      "topic": "surrender_and_paid_up",
+      "available": true,
+      "text": "Surrender benefit\nYour policy will acquire a surrender value after payment of two full years’ premium.\nOn policy surrender, you will get higher of the following:\n•\nGuaranteed Surrender Value (GSV) plus surrender value of accrued GAs\n•\nSpecial Surrender Value (SSV)\nPlease note, if you discontinue your premiums before your policy has acquired a surrender value, no benefits will be\npayable under the policy.\nFor more details on the surrender benefit, please refer to the policy document.\nNon-Payment of Premiums: What happens if you discontinue your premiums?\nIf you discontinue premium payment before your policy has acquired a surrender value, your policy will lapse and no\nbenefits will be paid. However, you can revive the policy within five years from the due date of the first unpaid premium.\nIf premium payment is discontinued after your policy has acquired a surrender value, your policy will continue as a\n‘paid-up’ policy with reduced benefits as explained below:\nPaid-up Sum Assured = Sum Assured x (Total number of premiums paid)\n——————————————————————\n(Total number of premiums payable)\nPaid-up Guaranteed Maturity Benefit = GMB X (Total number of premiums paid)\n———————————————————\n(Total number of premiums payable)\nPaid-up Guaranteed Addition rate = Guaranteed Addition rate x (Total number of premiums paid)\n———————————————————————————\n(Total number of premiums payable)\nOnce a policy becomes paid up, future Guaranteed Additions will accrue at the Paid-up Guaranteed Addition Rate\nbased on the total premiums paid to date (excluding extra mortality premiums, Goods & Services Tax and Cess (if any).\nOn death of the life assured during the policy term, when the policy is paid-up, the Paid-up Death Benefit will be\npayable and will be equal to highest of A or B or C.\nWhere,\n}\nA = Paid-up Sum Assured plus accrued Guaranteed Additions\n}\nB = Paid-up Guaranteed Maturity Benefit plus accrued Guaranteed Additions\n}\nC = 105% of total premiums paid (excluding extra mortality premiums, Goods & Services Tax and Cess (if any) till\nthe date of death\nOn survival of the life assured till the end of the policy term the Maturity Benefit will be payable which is equal to paidup GMB plus Accrued GAs.\nFor more details on paid-up policies, please refer to the policy document.",
+      "pages": [
+        8,
+        9
+      ]
+    },
+    {
+      "topic": "loan",
+      "available": true,
+      "text": "Taking a Policy Loan\n}\nYou may avail loans once the policy has attained a Surrender Value. Loan amount of up to 80% of\nSurrender Value can be availed.\n}\nFor other than in-force and fully paid-up policies, if the outstanding loan amount including interest\nexceeds the surrender value, the policy will be foreclosed after giving intimation and reasonable\nopportunity to you to continue the policy.\n} In the event of failure to repay by the required date, the policy will be foreclosed, the policy will\nterminate, and all rights, benefits and interests under the policy will stand extinguished. An in-force\nand fully paid-up policy will not be foreclosed.\n}\n}\nLoans may be granted on proof of title to the Policy.\nBefore any benefits are paid out, loan outstanding together with the interest thereon if any will be\ndeducted and the balance amount will be payable.\n}\nThe policy shall be assigned to and be held by us as security for repayment of the loan and\ninterest thereon.\n}\nApplicable interest rate will be equal to 150 basis points in addition to the prevailing yield on 10 year\nGovernment Securities. The 10-year G-Sec yield in December 2023 is 7.20% p.a. compounded\nsemi-annually. The loan interest rate for December 2023 is 8.70% p.a. compounded semi-annually.\n}\nThe loan interest rate will be reviewed on the 15th day of every month by the company based on the\n10-year G-Sec yield of one day prior to such review.\n}\nThe basis for computing loan interest will be reviewed from time to time and may be revised subject\nto the prior approval of the IRDAI.",
+      "pages": [
+        11
+      ]
+    },
+    {
+      "topic": "revival",
+      "available": true,
+      "text": "Revival of the policy\nA policy which has discontinued payment of premiums may be revived subject to underwriting and the following conditions:\n}\nThe application for revival is made within 5 years from the due date of the ﬁrst unpaid premium and before the\n}\nThe policyholder furnishes, at his or her own expense, satisfactory evidence of health of the life assured as\n}\nThe arrears of premiums together with interest at such rate as the Company may charge for late payment of\n}\nInterest rate for revival cases are set monthly based on the prevailing yield on Government Securities. The\ntermination date of the policy. Revival will be based on the prevailing Board approved underwriting policy.\nrequired by the Company.\npremiums are paid.\napplicable revival interest rate in December 2023 is 8.70% p.a. compounded semi-annually, this is subject to\nchange from time to time.\nThe revival of the policy may be on terms different from those applicable to the policy before premiums were\ndiscontinued; for example, extra mortality premiums or charges may be applicable. We reserve the right to refuse to\nrevive the policy. The revival will take effect only if it is speciﬁcally communicated by the Company to the policyholder.\nOn revival of a paid-up policy, the paid-up Sum Assured and paid-up GMB will be restored to the Sum Assured and\nGMB applicable at the time of premium discontinuance. The full GAs that would have accrued to the policy will be\nadded to the policy and the reduced GAs will be reversed.",
+      "pages": [
+        10
+      ]
+    },
+    {
+      "topic": "tax",
+      "available": true,
+      "text": "3. Tax benefits: Tax benefits under the policy will be as per the applicable Income Tax laws. We recommend that\nyou seek professional advice for applicability of tax benefit on premiums paid and benefits received.\nGoods & Services tax and applicable cesses, if any will be charged extra as per applicable rates. The tax laws are\nsubject to amendments from time to time.",
+      "pages": [
+        12
+      ]
+    },
+    {
+      "topic": "claims",
+      "available": false,
+      "text": null,
+      "pages": [],
+      "note": "Brochure does not describe the claim process. Offer an advisor callback."
+    },
+    {
+      "topic": "non_disclosure_sec45",
+      "available": true,
+      "text": "12. Section 45 of the Insurance Act, 1938, as amended from time to time:\n1) No policy of life insurance shall be called in question on any ground whatsoever after the expiry of three years\nfrom the date of the policy, i.e., from the date of issuance of the policy or the date of commencement of risk or the\ndate of revival of the policy or the date of the rider to the policy, whichever is later.\n2) A policy of life insurance may be called in question at any time within three years from the date of issuance of\nthe policy or the date of commencement of risk or the date of revival of the policy or the date of the rider to the\npolicy, whichever is later, on the ground of fraud: Provided that the insurer shall have to communicate in writing\nto the insured or the legal representatives or nominees or assignees of the insured the grounds and materials on\nwhich such decision is based.\n3) Notwithstanding anything contained in sub-section (2), no insurer shall repudiate a life insurance policy on the\nground of fraud if the insured can prove that the mis-statement of or suppression of a material fact was true to\nthe best of his knowledge and belief or that there was no deliberate intention to suppress the fact or that such\nmis-statement of or suppression of a material fact are within the knowledge of the insurer: Provided that in case\nof fraud, the onus of disproving lies upon the beneficiaries, in case the policyholder is not alive.\n4) A policy of life insurance may be called in question at any time within three years from the date of issuance of\nthe policy or the date of commencement of risk or the date of revival of the policy or the date of the rider to the\npolicy, whichever is later, on the ground that any statement of or suppression of a fact material to the expectancy\nof the life of the insured was incorrectly made in the proposal or other document on the basis of which the policy\nwas issued or revived or rider issued: Provided that the insurer shall have to communicate in writing to the\ninsured or the legal representatives or nominees or assignees of the insured the grounds and materials on which\nsuch decision to repudiate the policy of life insurance is based: Provided further that in case of repudiation of the\npolicy on the ground of misstatement or suppression of a material fact, and not on the ground of fraud, the\npremiums collected on the policy till the date of repudiation shall be paid to the insured or the legal\nrepresentatives or nominees or assignees of the insured within a period of ninety days from the date of such\nrepudiation.\n5) Nothing in this section shall prevent the insurer from calling for proof of age at any time if he is entitled to do so,\nand no policy shall be deemed to be called in question merely because the terms of the policy are adjusted on\nsubsequent proof that the age of the Life Insured was incorrectly stated in the proposal.\nIn case of fraud or misstatement, the policy shall be cancelled immediately by paying the surrender value, subject\nto the fraud or misstatement being established by the Company in accordance with Section 45 of the Insurance\nAct, 1938 as amended from time to time.",
+      "pages": [
+        14,
+        15
+      ]
+    },
+    {
+      "topic": "other_exclusions",
+      "available": false,
+      "text": null,
+      "pages": [],
+      "note": "Brochure lists no exclusions other than the suicide clause."
+    }
+  ],
+  "_meta": {
+    "extracted_on": "2026-09-25",
+    "method": "verbatim brochure text sliced between anchors; page numbers are PDF page indices",
+    "how_to_use": "Answer only from 'text'. If available=false, say the brochure does not cover it and offer an advisor callback. Never quote premiums or illustration figures."
+  }
+}

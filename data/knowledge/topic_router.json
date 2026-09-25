@@ -1,0 +1,37 @@
+{
+  "_meta": {
+    "purpose": "Pick which sections/<product_id>.json topics to load for a customer turn, without an extra LLM call.",
+    "how": "Lower-case the STT transcript; a topic is selected if any keyword is a substring. Always add CORE topics for the selected/referenced product(s). Cap at 4 topics per product and 2 products per turn. If the LLM returns topics_needed not loaded, do ONE follow-up call with them.",
+    "claims_fallback": "If 'claims' is selected but the product's section is missing or available=false, load data/insurers/<insurer_slug>/insurer.md (claims part) instead."
+  },
+  "core_topics": ["key_features", "plan_options", "death_benefit", "maturity_benefit"],
+  "keywords": {
+    "claims": ["claim", "clame", "kaise milega", "paisa kaise", "nominee ko", "death hone par", "settle", "documents chahiye", "insta pay", "payout"],
+    "death_benefit": ["death benefit", "mrityu", "maut", "agar mujhe kuch", "kuch ho gaya", "family ko kitna", "nominee ko kitna", "sum assured"],
+    "maturity_benefit": ["maturity", "end mein", "policy khatam", "survive", "wapas", "return", "money back", "paisa wapas", "income kab"],
+    "plan_options": ["option", "variant", "plan type", "kaun sa option", "life plus", "level", "increasing", "income option"],
+    "optional_benefits": ["add-on", "addon", "extra benefit", "spouse", "wife ko", "husband ko", "parent", "premium break", "smart exit", "terminal illness", "waiver"],
+    "riders": ["rider", "accident", "accidental", "critical illness", "disability", "health protect"],
+    "free_look": ["free look", "freelook", "cancel", "return kar", "pasand nahi aaya", "wapas kar sakte"],
+    "grace_period": ["grace", "premium miss", "late payment", "bhool gaya", "due date"],
+    "suicide_exclusion": ["suicide", "aatmahatya", "khudkushi"],
+    "surrender_and_paid_up": ["surrender", "band karna", "beech mein chhod", "stop paying", "paid up", "exit", "todna"],
+    "loan": ["loan against", "policy pe loan", "loan milega", "borrow"],
+    "revival": ["revive", "revival", "lapse", "chalu karna", "restart"],
+    "tax": ["tax", "80c", "10(10d)", "10 10d", "income tax"],
+    "non_disclosure_sec45": ["section 45", "hide", "chhupa", "disclose", "galat jaankari", "misstatement", "reject ho sakta"],
+    "other_exclusions": ["exclusion", "cover nahi", "not covered", "kya cover nahi", "excluded", "war", "hazardous", "adventure"]
+  },
+  "product_aliases": {
+    "sbi-smart-shield-plus": ["smart shield", "shield plus"],
+    "sbi-smart-swadhan-supreme": ["swadhan"],
+    "sbi-smart-platina-plus": ["platina"],
+    "sbi-smart-bachat-plus": ["bachat"],
+    "icici-iprotect-smart-plus": ["iprotect", "i protect", "protect smart"],
+    "icici-gift-pro": ["gift pro", "gift"],
+    "icici-assured-savings": ["assured savings"],
+    "hdfc-c2p-supreme": ["click 2 protect", "click to protect", "c2p"],
+    "hdfc-sanchay-plus": ["sanchay plus"],
+    "hdfc-sanchay-par-advantage": ["par advantage", "sanchay par"]
+  }
+}

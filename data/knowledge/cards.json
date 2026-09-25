@@ -1,0 +1,636 @@
+{
+  "_meta": {
+    "extracted_on": "2026-09-25",
+    "source": "Official product brochures (English) downloaded from sbilife.co.in, iciciprulife.com, hdfclife.com",
+    "review_status": "machine-built from brochures and hand-checked against the rendered eligibility tables; human review pending",
+    "how_to_use": "Always in the prompt. Pitch from pitch_line/key_benefits only. Never quote premiums."
+  },
+  "products": [
+    {
+      "id": "hdfc-c2p-supreme",
+      "name": "HDFC Life Click 2 Protect Supreme",
+      "insurer": "HDFC Life",
+      "uin": "101N183V01",
+      "plan_type": "term",
+      "product_class": "Non-Linked, Non-Participating, Individual, Pure Risk Premium/ Savings Life Insurance Plan",
+      "goals": [
+        "pure_protection"
+      ],
+      "pitch_line": "Flexible term plan: level or rising cover, optional return of all premiums at maturity, extra accident cover, and add-ons for spouse and parents.",
+      "key_benefits": [
+        "3 plan options: Life, Life Plus (adds accidental death cover), Life Goal (cover reduces over time, e.g. to match a loan)",
+        "Life option can increase cover up to 200% over the term (variants B and C)",
+        "Optional Return of Premium: 100% of premiums paid back on survival (Life and Life Plus)",
+        "Terminal illness diagnosis pays out early (up to ₹2 crore under Life), till age 80",
+        "Add-ons: spouse cover, waiver of premium on critical illness or disability, Parent Secure, death benefit in instalments",
+        "Immediate payout on claim intimation, Premium Break, Smart Exit"
+      ],
+      "plan_options": [
+        "life",
+        "life_plus",
+        "life_goal"
+      ],
+      "premium_payment_options": [
+        "single",
+        "regular",
+        "limited"
+      ],
+      "premium_frequency": [
+        "single",
+        "yearly",
+        "half_yearly",
+        "quarterly",
+        "monthly"
+      ],
+      "cover_up_to_age": 85,
+      "min_sum_assured_inr": 10000,
+      "riders": [
+        "HDFC Life Income Benefit on Accidental Disability",
+        "HDFC Life Protect Plus",
+        "HDFC Life Health Plus",
+        "HDFC Life LiveWell Rider"
+      ],
+      "ideal_for": "Families wanting a customisable term plan: growing cover, a loan-linked reducing cover, or premiums back at maturity.",
+      "not_for": "People looking for savings or income; without Return of Premium there is no maturity benefit.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "HDFC-Life-click-2-protect-supreme.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "optional_benefits",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "claims",
+        "non_disclosure_sec45",
+        "other_exclusions"
+      ]
+    },
+    {
+      "id": "hdfc-sanchay-par-advantage",
+      "name": "HDFC Life Sanchay Par Advantage",
+      "insurer": "HDFC Life",
+      "uin": "101N136V04",
+      "plan_type": "participating_income",
+      "product_class": "Individual Non-Linked, Participating, Savings Life Insurance Plan",
+      "goals": [
+        "savings_protection"
+      ],
+      "pitch_line": "Participating plan with life cover up to age 100: yearly cash bonuses (if declared) from year one, or a guaranteed income after premiums end, plus a lump sum legacy at maturity.",
+      "key_benefits": [
+        "Immediate Income option: cash bonus (if declared) every year from the 1st policy year",
+        "Deferred Income option: Guaranteed Income for up to 25 years after the premium term, plus cash bonuses (if declared)",
+        "Maturity: Sum Assured on Maturity + accrued bonuses/income not taken + terminal bonus (if declared)",
+        "Cover can run to age 100 (whole life) or for a fixed 20-40 years",
+        "Payouts can be left to accumulate, and paid on a date of your choice",
+        "Bonuses are not guaranteed"
+      ],
+      "plan_options": [
+        "immediate_income",
+        "deferred_income"
+      ],
+      "premium_payment_options": [
+        "limited_5",
+        "limited_6",
+        "limited_7",
+        "limited_8",
+        "limited_9",
+        "limited_10",
+        "limited_12"
+      ],
+      "premium_frequency": [
+        "yearly",
+        "half_yearly",
+        "quarterly",
+        "monthly"
+      ],
+      "cover_up_to_age": 100,
+      "min_sum_assured_inr": 300000,
+      "riders": [
+        "HDFC Life Waiver of Premium Rider",
+        "HDFC Life Protect Plus Rider",
+        "other HDFC Life riders as listed"
+      ],
+      "ideal_for": "People who want a lifelong income stream and a legacy for their children, and are comfortable with part of the return being non-guaranteed bonuses.",
+      "not_for": "Anyone needing fully guaranteed returns or maximum life cover per rupee.",
+      "available_online": null,
+      "purchase_url": null,
+      "source_file": "HDFC-Life-Sanchay-Par-Advantage-Retail-Brochure.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "optional_benefits",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45"
+      ]
+    },
+    {
+      "id": "hdfc-sanchay-plus",
+      "name": "HDFC Life Sanchay Plus",
+      "insurer": "HDFC Life",
+      "uin": "101N134V29",
+      "plan_type": "guaranteed_savings",
+      "product_class": "Individual non-participating, non-linked savings life insurance plan",
+      "goals": [
+        "savings_protection"
+      ],
+      "pitch_line": "Guaranteed savings plan with four ways to receive your money: a lump sum, income for 10-12 years, income for 25-30 years, or income for life till age 99.",
+      "key_benefits": [
+        "4 options: Guaranteed Maturity (lump sum), Guaranteed Income (10/12 yrs), Long Term Income (25/30 yrs), Life Long Income (till 99)",
+        "All maturity benefits guaranteed if all premiums are paid",
+        "Life Long and Long Term Income options also return total premiums paid at the end of the payout",
+        "Single Pay or pay for 5-12 years (up to 20 for Guaranteed Maturity)",
+        "Can cover a child from 30 days of age",
+        "Enhanced benefits for annual premiums above ₹1.5 lakh"
+      ],
+      "plan_options": [
+        "guaranteed_maturity",
+        "guaranteed_income",
+        "life_long_income",
+        "long_term_income"
+      ],
+      "premium_payment_options": [
+        "single",
+        "limited_5_to_12",
+        "limited_15",
+        "limited_20"
+      ],
+      "premium_frequency": [
+        "single",
+        "yearly",
+        "half_yearly",
+        "quarterly",
+        "monthly"
+      ],
+      "cover_up_to_age": 85,
+      "min_sum_assured_inr": null,
+      "riders": [
+        "HDFC Life Income Benefit on Accidental Disability",
+        "HDFC Life Protect Plus",
+        "HDFC Life Health Plus",
+        "HDFC Life Waiver of Premium Rider",
+        "HDFC Life LiveWell Rider"
+      ],
+      "ideal_for": "Risk-averse savers who want a guaranteed lump sum or a guaranteed income stream for retirement, children's education or a lifelong pension-like income.",
+      "not_for": "People wanting high life cover per rupee, or market-linked growth.",
+      "available_online": null,
+      "purchase_url": null,
+      "source_file": "Sanchay-Plus-brochure.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "optional_benefits",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45"
+      ]
+    },
+    {
+      "id": "icici-assured-savings",
+      "name": "ICICI Pru Assured Savings Insurance Plan",
+      "insurer": "ICICI Prudential Life",
+      "uin": "105N144V10",
+      "plan_type": "guaranteed_savings",
+      "product_class": "Non-Linked Non-Participating Individual Savings Life Insurance Plan",
+      "goals": [
+        "savings_protection"
+      ],
+      "pitch_line": "High-premium guaranteed savings plan: yearly guaranteed additions of 9-11% of premiums paid, plus a guaranteed lump sum at maturity, with life cover throughout.",
+      "key_benefits": [
+        "Guaranteed Additions every year: 9%, 10% or 11% of total premiums paid, depending on the policy term",
+        "Guaranteed Maturity Benefit plus accrued Guaranteed Additions, paid as a lump sum at maturity",
+        "Pay for 5, 7, 8, 10 or 12 years; policy term 10 to 20 years",
+        "Life cover for the full term (death benefit at least 10x annual premium plus additions)",
+        "Minimum annual premium is ₹20 lakh (non-POS)"
+      ],
+      "plan_options": [],
+      "premium_payment_options": [
+        "limited_5",
+        "limited_7",
+        "limited_8",
+        "limited_10",
+        "limited_12"
+      ],
+      "premium_frequency": [
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 72,
+      "min_sum_assured_inr": null,
+      "riders": [],
+      "ideal_for": "High-income savers (₹20 lakh+ a year) who want a fully guaranteed lump sum for a goal 10-20 years away.",
+      "not_for": "Anyone who cannot commit ₹20 lakh a year, or who mainly needs protection.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "ICICI Pru Assured Savings Insurance Plan.pdf",
+      "data_caveats": [
+        "Brochure is dated FY 2023-24 (Advt L/II/1494/2023-24); interest rates quoted inside are from Dec 2023. Confirm the current version with ICICI before relying on it."
+      ],
+      "topics_available": [
+        "key_features",
+        "death_benefit",
+        "maturity_benefit",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45"
+      ]
+    },
+    {
+      "id": "icici-gift-pro",
+      "name": "ICICI Pru GIFT Pro",
+      "insurer": "ICICI Prudential Life",
+      "uin": "105N201V07",
+      "plan_type": "guaranteed_income",
+      "product_class": "Non-linked, Non-participating, Individual, Savings Life Insurance plan",
+      "goals": [
+        "savings_protection"
+      ],
+      "pitch_line": "Pay for 5-12 years and get a guaranteed income for 5-30 years (level or rising 5% a year), with an optional lump sum of up to 200% of premiums, plus life cover.",
+      "key_benefits": [
+        "Guaranteed Income after the policy term, for an income period of 5, 7, 10, 12, 15, 20, 25 or 30 years",
+        "Choose level income or income rising 5% a year (simple)",
+        "MoneyBack lump sum: pick 0%-200% of total annual premiums and the year you receive it",
+        "Low Cover Income Booster: take lower life cover for higher income",
+        "Income continues to the family if the life assured dies during the income period",
+        "Higher income rates for larger annual premiums"
+      ],
+      "plan_options": [
+        "level_guaranteed_income",
+        "increasing_guaranteed_income"
+      ],
+      "premium_payment_options": [
+        "limited_5",
+        "limited_6",
+        "limited_7",
+        "limited_8",
+        "limited_9",
+        "limited_10",
+        "limited_11",
+        "limited_12"
+      ],
+      "premium_frequency": [
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 75,
+      "min_sum_assured_inr": 250000,
+      "riders": [],
+      "ideal_for": "Savers planning a guaranteed second income or known future expenses (children's education, retirement top-up) with flexibility on when the lump sum arrives.",
+      "not_for": "Pure protection seekers; life cover is only about 11x the annual premium (lower with Income Booster).",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "ICICI_Pru_GIFT_Pro_Brochure.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "optional_benefits",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45"
+      ]
+    },
+    {
+      "id": "icici-iprotect-smart-plus",
+      "name": "ICICI Pru iProtect Smart Plus",
+      "insurer": "ICICI Prudential Life",
+      "uin": "105N205V07",
+      "plan_type": "term",
+      "product_class": "Non-Participating, Non-linked, Life, Individual, Pure Risk Premium product",
+      "goals": [
+        "pure_protection"
+      ],
+      "pitch_line": "Term plan with high cover, optional accidental death cover, ₹3 lakh paid within a working day of a claim, and a one-year premium break if money is tight.",
+      "key_benefits": [
+        "3 variants: Life; Life Plus (adds accidental death cover); Life Rebalancing (higher accident cover in early years)",
+        "Cover up to age 85, or whole life to 99 (Life variant)",
+        "Terminal illness diagnosis pays the death benefit early",
+        "Insta payment: ₹3 lakh advance on claim intimation for covers of ₹1 crore or more (after 3 policy years)",
+        "Raise cover at marriage, child birth or home loan (Regular Pay); Premium Break after 5 years",
+        "Smart Exit: get total premiums back after 25 years if aged 60+"
+      ],
+      "plan_options": [
+        "life",
+        "life_plus",
+        "life_rebalancing"
+      ],
+      "premium_payment_options": [
+        "single",
+        "regular",
+        "limited_5",
+        "limited_7",
+        "limited_10",
+        "limited_15",
+        "limited_to_age_60"
+      ],
+      "premium_frequency": [
+        "single",
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 99,
+      "min_sum_assured_inr": 5000000,
+      "riders": [
+        "ICICI Pru Non-linked Health Protect Rider (critical illness), and other riders as made available"
+      ],
+      "ideal_for": "Salaried earners with loans or young dependants who want large cover (₹50 lakh+) and flexibility as life changes.",
+      "not_for": "Anyone needing cover below ₹50 lakh or wanting a maturity payout.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "ICICI_Pru_iProtect_Smart_Plus_Brochure.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "optional_benefits",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "claims",
+        "non_disclosure_sec45",
+        "other_exclusions"
+      ]
+    },
+    {
+      "id": "sbi-smart-bachat-plus",
+      "name": "SBI Life - Smart Bachat Plus",
+      "insurer": "SBI Life",
+      "uin": "111N170V01",
+      "plan_type": "endowment_participating",
+      "product_class": "Individual, Non-Linked, Participating, Life Insurance, Savings Product",
+      "goals": [
+        "savings_protection"
+      ],
+      "pitch_line": "Traditional savings plan: life cover plus a lump sum at maturity (sum assured + bonuses, if declared), with an option for extra accident cover.",
+      "key_benefits": [
+        "Maturity: Sum Assured + vested reversionary bonuses + terminal bonus (if declared), as a lump sum",
+        "Two options: Life, or Life Plus (adds accidental death cover and accidental total permanent disability cover)",
+        "Life Plus: on accidental total permanent disability, Sum Assured paid and future premiums waived",
+        "Pay regularly, or for 7, 10 or 15 years",
+        "Participating plan: bonuses are not guaranteed and depend on company performance"
+      ],
+      "plan_options": [
+        "life",
+        "life_plus"
+      ],
+      "premium_payment_options": [
+        "regular",
+        "limited_7",
+        "limited_10",
+        "limited_15"
+      ],
+      "premium_frequency": [
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 65,
+      "min_sum_assured_inr": 200000,
+      "riders": [],
+      "ideal_for": "Conservative savers building a lump sum for a goal 15-30 years away (child's marriage, retirement corpus) who also want life cover.",
+      "not_for": "People wanting guaranteed returns (bonuses are not guaranteed) or high cover per rupee.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "SBI_Life_-_Smart_Bachat_Plus_Brochure_eng.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45",
+        "other_exclusions"
+      ]
+    },
+    {
+      "id": "sbi-smart-platina-plus",
+      "name": "SBI Life - Smart Platina Plus",
+      "insurer": "SBI Life",
+      "uin": "111N133V06",
+      "plan_type": "guaranteed_income",
+      "product_class": "Individual, Non-Linked, Non-Participating Life Insurance Savings Product",
+      "goals": [
+        "savings_protection"
+      ],
+      "pitch_line": "Pay for 7, 8 or 10 years, then get a fixed guaranteed income for 15-30 years, plus 110% of your premiums back at the end, with life cover throughout.",
+      "key_benefits": [
+        "Guaranteed regular income during the payout period (yearly, half-yearly, quarterly or monthly)",
+        "Maturity: 110% of total premiums paid",
+        "Two income options: Life Income or Guaranteed Income (income continues to nominee after death)",
+        "Life cover for the whole policy term",
+        "Can be bought for a child from 30 days of age, with a parent as proposer"
+      ],
+      "plan_options": [
+        "life_income",
+        "guaranteed_income"
+      ],
+      "premium_payment_options": [
+        "limited_7",
+        "limited_8",
+        "limited_10"
+      ],
+      "premium_frequency": [
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 99,
+      "min_sum_assured_inr": 550000,
+      "riders": [
+        "SBI Life - Accident Benefit Rider (ADB / APPD)"
+      ],
+      "ideal_for": "Savers who want a predictable second income later (children's education, retirement top-up) without market risk.",
+      "not_for": "People who want the largest possible life cover per rupee; the sum assured is only about 11x the annual premium.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "SBI_Life_-_Smart_Platina_Plus_Brochure_eng.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45",
+        "other_exclusions"
+      ]
+    },
+    {
+      "id": "sbi-smart-shield-plus",
+      "name": "SBI Life - Smart Shield Plus",
+      "insurer": "SBI Life",
+      "uin": "111N150V01",
+      "plan_type": "term",
+      "product_class": "Individual, Non-Linked, Non-Participating, Life Insurance, Pure Risk Product",
+      "goals": [
+        "pure_protection"
+      ],
+      "pitch_line": "Pure term cover at a low cost, with cover that can stay level, grow 5% a year, or step up at marriage, child birth or home purchase.",
+      "key_benefits": [
+        "3 plan options: Level Cover, Increasing Cover (+5% of SA a year, up to 200%), Level Cover with Future Proofing",
+        "Cover till age 79, or whole life till 100 (Limited Pay)",
+        "Optional Better Half Benefit: spouse gets their own cover if the policyholder dies",
+        "Nominee can take the death benefit as lump sum, instalments or both",
+        "Lower rates for higher sum assured and for women"
+      ],
+      "plan_options": [
+        "level_cover",
+        "increasing_cover",
+        "level_cover_future_proofing"
+      ],
+      "premium_payment_options": [
+        "single",
+        "regular",
+        "limited_10",
+        "limited_15",
+        "limited_20",
+        "limited_25"
+      ],
+      "premium_frequency": [
+        "single",
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 100,
+      "min_sum_assured_inr": 2500000,
+      "riders": [
+        "SBI Life - Accident Benefit Rider (ADB / APPD)"
+      ],
+      "ideal_for": "Earning members with dependants who want maximum cover per rupee; young families expecting their responsibilities to grow.",
+      "not_for": "Anyone who wants money back on survival - there is no maturity benefit.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "SBI_Life_-_Smart_Shield_Plus_Brochure_eng.pdf",
+      "topics_available": [
+        "key_features",
+        "plan_options",
+        "death_benefit",
+        "maturity_benefit",
+        "optional_benefits",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45",
+        "other_exclusions"
+      ]
+    },
+    {
+      "id": "sbi-smart-swadhan-supreme",
+      "name": "SBI Life - Smart Swadhan Supreme",
+      "insurer": "SBI Life",
+      "uin": "111N140V02",
+      "plan_type": "term_return_of_premium",
+      "product_class": "Individual, Non-Linked, Non-Participating, Life Insurance Savings product with Return of Premium",
+      "goals": [
+        "pure_protection",
+        "savings_protection"
+      ],
+      "pitch_line": "Term life cover that gives back 100% of the premiums you paid if you survive the policy term.",
+      "key_benefits": [
+        "Death: higher of Basic Sum Assured, 11x annualised premium, or 105% of premiums paid",
+        "Maturity: 100% of total premiums paid returned in a lump sum",
+        "Pay regularly, or only for 7, 10 or 15 years",
+        "Policy term 10 to 30 years"
+      ],
+      "plan_options": [],
+      "premium_payment_options": [
+        "regular",
+        "limited_7",
+        "limited_10",
+        "limited_15"
+      ],
+      "premium_frequency": [
+        "yearly",
+        "half_yearly",
+        "monthly"
+      ],
+      "cover_up_to_age": 75,
+      "min_sum_assured_inr": 2500000,
+      "riders": [
+        "SBI Life - Accident Benefit Rider (ADB / APPD)"
+      ],
+      "ideal_for": "Someone who wants a family safety net but dislikes 'losing' premiums on a pure term plan.",
+      "not_for": "People looking for investment growth or income; maturity only returns premiums, no returns on top.",
+      "available_online": true,
+      "purchase_url": null,
+      "source_file": "SBI_Life_-_Smart_Swadhan_Supreme__brochure__eng.pdf",
+      "topics_available": [
+        "key_features",
+        "death_benefit",
+        "maturity_benefit",
+        "riders",
+        "free_look",
+        "grace_period",
+        "suicide_exclusion",
+        "surrender_and_paid_up",
+        "loan",
+        "revival",
+        "tax",
+        "non_disclosure_sec45"
+      ]
+    }
+  ]
+}
