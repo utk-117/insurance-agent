@@ -15,7 +15,8 @@ Docker/Cloud Run uses Python 3.11; the code also runs on 3.9+.
 ```bash
 .venv/bin/python scripts/smoke.py                      # one call each to TTS, STT, LLM(s), with latency
 .venv/bin/uvicorn app.main:app --reload --port 8080    # http://localhost:8080  (/healthz, /ws/echo)
-.venv/bin/python -m unittest discover -s tests -v      # knowledge + JSON-parsing tests
+.venv/bin/python -m app.cli --name Rahul --phone 9876543210 --debug   # M2 text agent (type 'quit' to end)
+.venv/bin/python -m unittest discover -s tests -v      # knowledge, controller, JSON-parsing tests
 .venv/bin/python data/knowledge/check_integrity.py     # knowledge-base cross references
 ```
 
@@ -29,4 +30,5 @@ scripts/deploy.sh
 ## Milestones
 - [x] M0 setup: adapters (Sarvam STT/TTS/LLM + Claude), smoke script, FastAPI hello + WS echo, Dockerfile, deploy script
 - [x] M1 knowledge wiring: `app/agent/knowledge.py` + tests
-- [ ] M2 text agent · M3 evals + swap test · M4 voice UI · M5 integrations · M6 ship
+- [x] M2 text agent: `app/agent/controller.py` stage machine, CSV lead log (`data/leads.csv`), transcripts in `data/transcripts/`
+- [ ] M3 evals + swap test · M4 voice UI · M5 integrations · M6 ship

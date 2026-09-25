@@ -106,7 +106,7 @@ def insurer_slug(product_id: str) -> str:
     return insurer_slugs()[cards()[product_id]["insurer"]]
 
 
-def _match_insurer(name) -> str | None:
+def match_insurer(name) -> str | None:
     """'hdfc' / 'HDFC Life' / 'hdfc-life' -> insurer name as in cards, or None."""
     if not name:
         return None
@@ -161,7 +161,7 @@ def rank_products(profile) -> list:
     need = _get(profile, "primary_need")
     eligible = _eligibility().eligible_products(int(age), goal, channel="all",
                                                 rows=eligibility_rows(), cards=list(cards().values()))
-    pref = _match_insurer(_get(profile, "preferred_insurer"))
+    pref = match_insurer(_get(profile, "preferred_insurer"))
     scored = []
     for pid in eligible:
         if not _gate_ok(pid, profile):
@@ -180,7 +180,7 @@ def rank_products(profile) -> list:
 def shortlist(profile, k: int = 3) -> list:
     """Top-k product ids. Insurer-neutral: at most one per insurer unless preferred_insurer is set."""
     ranked = rank_products(profile)
-    if _match_insurer(_get(profile, "preferred_insurer")):
+    if match_insurer(_get(profile, "preferred_insurer")):
         return ranked[:k]
     out, seen = [], set()
     for pid in ranked:
@@ -306,7 +306,7 @@ def claims_record(insurers) -> list:
         elif x in claims_history():
             slug = x
         else:
-            ins = _match_insurer(x)
+            ins = match_insurer(x)
             slug = insurer_slugs().get(ins) if ins else None
         if not slug or slug in seen:
             continue

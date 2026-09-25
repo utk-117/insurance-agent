@@ -34,6 +34,34 @@
 - Sarvam APIs matched the docs so far: `json_schema` response_format and `reasoning_effort: null` are accepted
   by `sarvam-105b-conversations`; saaras:v3 `translit` returns romanised Hindi with `language_code=hi-IN`.
 
+## M2 findings (text agent, Sarvam LLM)
+Scripted runs: English term plan -> callback, Hinglish savings -> "kal shaam 5 baje", wrong person, not interested,
+premium asked twice + smoking + "buy now". All reached the right outcome and lead row.
+
+What the code had to absorb (the stage machine is in code, so it must not trust the LLM blindly):
+- **`intent` is unreliable on sarvam-105b-conversations**: "Yes, this is Rahul" came back as `question`,
+  "Yes, that's right" as `answered`. Fix: yes/no regex fallback on the customer's words; CONFIRM_IDENTITY
+  moves on for anything except wrong person / no / not interested.
+- **The LLM runs ahead of the stage** (pitches during DISCOVERY/NEED_CHECK). Fix: `sync_with_reply` moves the
+  stage to RECOMMEND when the reply names a shortlisted product; the prompt carries NEXT STEP goals so the reply
+  can complete the current step and start the next in one turn.
+- **Callback booking**: the LLM often leaves `callback_time_iso` null, and on the confirming "yes" it repeats the
+  same time. Fix: callback detection in every post-identity stage, a fallback time parser (`parse_time_text`:
+  tomorrow/kal/parso/weekdays, am/pm/subah/shaam/baje), and booking on yes when the time is unchanged. Before
+  this fix the agent *said* "booked" while nothing was logged.
+- **Wrong weekday** in read-backs ("Friday, 26th September" — it was a Saturday). Fix: 8-day calendar in context.
+- **Language drift**: English customers got Hinglish replies (the stage examples are Hinglish). Fix: detected
+  customer language passed as `LANGUAGE` in context.
+
+Prompt tuning left for the human review (not changed; `prompts/*.md` untouched except the new `controller.md`):
+- First "not interested" often gets a goodbye instead of the one soft retry (rail 7).
+- Asks "male or female?" even when the customer's Hindi verb forms say so ("bol rahi hoon").
+- NEED_CHECK sometimes asks "anything you'd like to know?" instead of playing the need back.
+- RECOMMEND sometimes pitches two products at once, and repeats the insurer ("ICICI Prudential Life ICICI Pru …").
+- CALLBACK sometimes says "scheduled" before the customer has confirmed the read-back.
+
+Prompt size: ~11k input tokens per turn (cards ~6k + process + sections); LLM 0.6–1.6 s per turn.
+
 ## Latency / cost
 First smoke run (2026-09-25, from a laptop in India, single calls — not a benchmark):
 | call | ms |
