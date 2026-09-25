@@ -29,10 +29,20 @@
 - Local dev machine: the only Python 3.11 installed is an x86_64 build and the arm64 Mac has no Rosetta,
   so local dev uses the system Python 3.9 (code keeps `from __future__ import annotations`, no 3.10+ syntax).
   Docker uses 3.11.
-- Sarvam API quirks: _to be filled as found (run `scripts/smoke.py`)._
+- `.env` inline comments: python-dotenv reads `LLM_MODEL=   # comment` (empty value + comment) as the value
+  "# comment", and Sarvam rejected it as a model name. All comments in `.env.example` are now on their own lines.
+- Sarvam APIs matched the docs so far: `json_schema` response_format and `reasoning_effort: null` are accepted
+  by `sarvam-105b-conversations`; saaras:v3 `translit` returns romanised Hindi with `language_code=hi-IN`.
 
 ## Latency / cost
-_TBD (M3 bench, M6)._
+First smoke run (2026-09-25, from a laptop in India, single calls — not a benchmark):
+| call | ms |
+|---|---|
+| TTS bulbul:v3, 1 Hinglish sentence (~60 chars), mp3 | ~1,280 |
+| STT saaras:v3 translit, same clip | ~500–590 |
+| LLM sarvam-105b-conversations, tiny JSON reply | ~510 |
+
+Proper p50/p90 comes from `scripts/bench.py` in M3.
 
 ## Router miss rate
 _TBD (M2/M3)._
