@@ -201,6 +201,15 @@ the first spoken chunk short (first clause only) so audio starts sooner. ~16k in
   GOOGLE_SERVICE_ACCOUNT_JSON (or ADC with the Sheets scope); otherwise they fail quietly and the CSV has the row.
 - Latency panel and state panel: done in M4.
 
+## Pre-M6 regression run (27 Sep 2026, Sarvam, judge claude-opus-5)
+`evals/results/sarvam-20260927-012350.json` — after the consult-opening, close-by-message and M5 changes:
+**22/24 must**, scorecard mean **0.83** (intake_clean 1.0 · intent_understood 1.0 · fit_explained 0.73 · grounded 0.95 ·
+price_with_disclaimer 0.79 · moves_to_close 0.50 · objection_handled_once 0.86 · no_pressure 1.0 · respects_no 0.67).
+20 tool calls, 1 tool error (a guard), 0 parse fallbacks.
+- Case 13 (compare HDFC vs ICICI): facts grounded, but ended "For pure high cover, HDFC is the better value" —
+  price-based, yet the judge reads "better" as ranking an insurer (rail 10). Borderline; not changed.
+- Case 17 (too expensive, twice): still flaky — sometimes re-offers a lower cover in words after the second no.
+
 ## Router miss rate
 _TBD (M2/M3)._
 
