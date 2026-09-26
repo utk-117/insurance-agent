@@ -175,6 +175,20 @@ TTS of the first chunk is the biggest stage for Sarvam (~75% of time to first au
 the first spoken chunk short (first clause only) so audio starts sooner. ~16k input tokens per LLM call
 (Claude: ~10.6k of them served from the prompt cache).
 
+## M4 — voice UI + first deploy (26 Sep 2026)
+- Short first TTS chunk (`normalize.split_for_tts`): Sarvam time to first audio p50 2.86 s -> 2.23 s, p90 4.68 s
+  -> 2.66 s on a laptop. **On Cloud Run (asia-south1, next to Sarvam): 1.2–1.9 s to first audio** in a live test
+  (voice turn: STT 243 ms, LLM 437 ms, first TTS chunk 592 ms, first audio 1,287 ms).
+- The page works without a microphone (typed replies, Asha still speaks) — also how it was tested in a browser
+  that blocks mic capture. app.js is cache-busted so a redeploy isn't hidden behind a cached script.
+- Deploy challenges (new GCP project): `gcloud run deploy --source` waited forever on an interactive "create
+  Artifact Registry repo?" prompt (fixed: repo created up front + `--quiet`); Cloud Build's default compute SA
+  lacked `storage.objects.get` (fixed: `roles/run.builder`); the org policy (domain-restricted sharing) blocks
+  `allUsers` (fixed: `--no-invoker-iam-check`; the ACCESS_CODE guards the app); `/healthz` 404s on Cloud Run
+  because the front end reserves paths ending in "z" (added `/health`).
+- Leads: on Cloud Run the CSV lead log lives on the instance's disk and is lost on restart; every session's full
+  record is also logged as `session_end` in Cloud Logging. Google Sheets is M5.
+
 ## Router miss rate
 _TBD (M2/M3)._
 

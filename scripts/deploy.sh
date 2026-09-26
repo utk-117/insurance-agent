@@ -5,14 +5,14 @@ set -euo pipefail
 SERVICE=${SERVICE:-insurance-voice-agent}
 REGION=asia-south1
 
-SECRETS="SARVAM_API_KEY=SARVAM_API_KEY:latest"
+# create once from .env:  printf %s "$VALUE" | gcloud secrets create NAME --data-file=-
+SECRETS="SARVAM_API_KEY=SARVAM_API_KEY:latest,ACCESS_CODE=ACCESS_CODE:latest"
 if gcloud secrets describe ANTHROPIC_API_KEY >/dev/null 2>&1; then SECRETS="$SECRETS,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest"; fi
-if gcloud secrets describe ACCESS_CODE >/dev/null 2>&1; then SECRETS="$SECRETS,ACCESS_CODE=ACCESS_CODE:latest"; fi
 
-gcloud run deploy "$SERVICE" \
+gcloud run deploy "$SERVICE" --quiet \
   --source . \
   --region "$REGION" \
-  --allow-unauthenticated \
+  --no-invoker-iam-check \
   --min-instances=1 --max-instances=2 \
   --session-affinity \
   --timeout=900 \

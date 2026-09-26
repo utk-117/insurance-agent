@@ -1,0 +1,13 @@
+# never upload secrets, local envs or generated data
+.env
+.venv/
+.git/
+.claude/
+**/__pycache__/
+**/.DS_Store
+data/transcripts/
+data/bench/
+data/leads*.csv
+evals/results/
+tests/
+data/knowledge/build/

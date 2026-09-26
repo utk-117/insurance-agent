@@ -66,6 +66,7 @@ class NewSession(BaseModel):
     access_code: str
 
 
+@app.get("/health")  # Cloud Run's front end reserves paths ending in "z" (/healthz 404s there)
 @app.get("/healthz")
 def healthz():
     return {"ok": True, "stt": os.getenv("STT_PROVIDER", "sarvam"), "tts": os.getenv("TTS_PROVIDER", "sarvam"),

@@ -5,3 +5,8 @@
 **/.DS_Store
 data/knowledge/build
 tests
+data/transcripts
+data/bench
+data/leads*.csv
+evals/results
+.claude
