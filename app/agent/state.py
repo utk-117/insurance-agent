@@ -33,6 +33,8 @@ class SessionState:
     phase: Phase = Phase.GREET
     profile: dict = field(default_factory=lambda: {"age": None, "gender": None, "employment_type": None,
                                                    "annual_income_inr": None, "tobacco": None})
+    asked_slot: Optional[str] = None       # intake slot the last reply asked for
+    gender_hint: Optional[str] = None      # "male"/"female" from Hindi verb forms, to confirm; "rejected" if denied
     snapshot: Optional[dict] = None
     consult_opened: bool = False
     intents: list = field(default_factory=list)            # free text, for the lead sheet only

@@ -185,22 +185,84 @@ class TestFlow(Base):
         self.assertEqual(s.metrics["tool_rounds"], 2)
 
 
-class TestIntakeMemory(Base):
-    def test_gender_from_identity_turn_is_not_asked_again(self):
-        fake = FakeLLM(json_replies=[{"reply": "Salaried hain ya self-employed?", "reply_language": "hi-IN",
-                                      "extracted": {}, "intent": "answered"}])
+class TestGenderConfirmation(Base):
+    def _state(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.add("agent", "Kya main Rahul se baat kar raha hoon?")
+        s.add("user", "Haan ji, bol raha hoon")
+        s.phase = Phase.INTAKE
+        return s
+
+    def _reply(self, text="ok"):
+        return {"reply": text, "reply_language": "hi-IN", "extracted": {"gender": "male"}, "intent": "answered"}
+
+    def test_inferred_gender_is_confirmed_not_assumed(self):
+        fake = FakeLLM(json_replies=[self._reply(), self._reply()])
 
         async def convo():
-            s = c.new_session("Rahul", "9876543210")
-            s.add("agent", "Kya main Rahul se baat kar rahi hoon?")
-            s.add("user", "Haan ji, bol raha hoon")
-            s.phase = Phase.INTAKE
-            await c.handle_turn(s, "36")
+            s = self._state()
+            await c.handle_turn(s, "36")                  # age; next slot gender, with the hint
+            self.assertIsNone(s.profile["gender"])        # not assumed, and the model's guess is ignored
+            self.assertIn("maan rahi hoon ki aap male hain", sys_text(fake.systems[-1]))
+            await c.handle_turn(s, "haan ji")             # confirms
             return s
 
         s = self.run_with(fake, convo())
-        self.assertEqual((s.profile["age"], s.profile["gender"]), (36, "male"))
+        self.assertEqual(s.profile["gender"], "male")
         self.assertIn("NEXT SLOT: employment_type", sys_text(fake.systems[-1]))
+
+    def test_rejected_hint_asks_plainly(self):
+        fake = FakeLLM(json_replies=[self._reply(), self._reply()])
+
+        async def convo():
+            s = self._state()
+            await c.handle_turn(s, "36")
+            await c.handle_turn(s, "nahi")
+            return s
+
+        s = self.run_with(fake, convo())
+        self.assertIsNone(s.profile["gender"])
+        self.assertEqual(s.gender_hint, "rejected")
+        self.assertIn("NEXT SLOT: gender", sys_text(fake.systems[-1]))
+        self.assertNotIn("maan rahi hoon", sys_text(fake.systems[-1]))
+
+    def test_explicit_gender_needs_no_confirmation(self):
+        fake = FakeLLM(json_replies=[self._reply()])
+
+        async def convo():
+            s = self._state()
+            await c.handle_turn(s, "36, female")
+            return s
+
+        s = self.run_with(fake, convo())
+        self.assertEqual(s.profile["gender"], "female")
+
+
+class TestPhoneAndHours(Base):
+    def test_phone_never_in_prompt_or_reply(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.profile = {"age": 30, "gender": "male", "employment_type": "salaried", "annual_income_inr": 1_200_000,
+                     "tobacco": False}
+        c._finish_intake(s)
+        for phase in (Phase.GREET, Phase.CONSULT, Phase.CLOSE):
+            text = sys_text(c.build_system(s, phase, c.snippet("OUTPUT_CONSULT"), "kal 5 baje"))
+            self.assertNotIn("9876543210", text)
+        self.assertEqual(c.redact_phone("We'll call you on 98765 43210 tomorrow.", "9876543210"),
+                         "We'll call you on your number tomorrow.")
+        self.assertEqual(c.redact_phone("Call +91-9123456789 now", None), "Call your number now")
+        self.assertEqual(c.redact_phone("Cover of 3 crore, ₹14,088 a year", "9876543210"),
+                         "Cover of 3 crore, ₹14,088 a year")
+
+    def test_outside_hours_noted_in_prompt(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.profile = {"age": 30, "gender": "male", "employment_type": "salaried", "annual_income_inr": 1_200_000,
+                     "tobacco": False}
+        c._finish_intake(s)
+        s.phase = Phase.CLOSE
+        late = sys_text(c.build_system(s, Phase.CLOSE, c.snippet("OUTPUT_CONSULT"), "tomorrow at 10 pm"))
+        ok = sys_text(c.build_system(s, Phase.CLOSE, c.snippet("OUTPUT_CONSULT"), "tomorrow at 5 pm"))
+        self.assertIn("outside advisor hours (9 AM to 9 PM IST)", late)
+        self.assertNotIn("outside advisor hours", ok)
 
 
 class TestEnding(Base):

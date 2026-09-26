@@ -112,6 +112,16 @@ def parse_time_text(text: str | None, now: datetime | None = None):
     return dt if dt > now else None
 
 
+def redact_phone(text: str, phone: str | None) -> str:
+    """Safety net: the model never gets the number, but never speak it (or any phone-like digit run) anyway."""
+    words = snippet("PHONE_WORDS")
+    if phone:
+        digits = re.sub(r"\D", "", phone)[-10:]
+        if len(digits) >= 8:
+            text = re.sub(r"[\s-]?".join(digits), words, text)
+    return re.sub(r"(?<!\d)(?:\+?91[\s-]?)?[6-9]\d{4}[\s-]?\d{5}(?!\d)", words, text)
+
+
 def text_language(text: str) -> str:
     if re.search(r"[ऀ-ॿ]", text or ""):
         return "Hindi (Devanagari)"
@@ -196,12 +206,15 @@ def _intake_text(state: SessionState, parsed: dict) -> str:
     p = state.profile
     nxt = intake.next_slot(p)
     q = intake.question(nxt) if nxt else {"ask_en": "", "ask_hi": ""}
+    english = customer_language(state) in ("English", "unknown")
+    ask = q["ask_en"] if english else q["ask_hi"]
+    if nxt == "gender" and state.gender_hint in ("male", "female"):
+        ask = snippet("GENDER_CONFIRM_EN" if english else "GENDER_CONFIRM_HI", gender=state.gender_hint)
     return snippet("INTAKE_STATE",
                    known=json.dumps({k: v for k, v in p.items() if v is not None}) or "{}",
                    parsed=json.dumps(parsed) if parsed else "nothing",
                    missing=", ".join(intake.missing(p)) or "none",
-                   next_slot=nxt or "none (intake complete)",
-                   ask=q["ask_en"] if customer_language(state) in ("English", "unknown") else q["ask_hi"])
+                   next_slot=nxt or "none (intake complete)", ask=ask)
 
 
 def _prefetch_text(state: SessionState, text: str) -> str:
@@ -230,6 +243,8 @@ def _current_turn(state: SessionState, text: str = "") -> str:
         dt = parse_time_text(text)
         if dt:
             extra.append(snippet("RESOLVED_TIME", when=f"{dt:%A, %d %B at %I:%M %p}", iso=dt.isoformat()))
+            if not tools.in_callback_hours(dt):
+                extra.append(snippet("OUTSIDE_HOURS", hours=tools.CALLBACK_HOURS_TEXT))
         amount = parse_amount(text) if not dt else None
         if amount:
             extra.append(snippet("RESOLVED_AMOUNT", amount=money(amount)))
@@ -258,7 +273,7 @@ def build_system(state: SessionState, phase: Phase, output: str, text: str = "",
     else:
         intake_state = "(done)" if state.snapshot else "(not started)"
     vals = dict(
-        brand_name=brand(), lead_name=state.lead.get("name"), lead_phone=state.lead.get("phone"),
+        brand_name=brand(), lead_name=state.lead.get("name"),
         now_ist=_fmt_time(start), calendar=f"CALENDAR: {_week(start)}.",
         language="see CURRENT TURN below",
         phase=phase.value if phase != Phase.CONSULT or state.consult_opened else "CONSULT (opening)",
@@ -364,6 +379,23 @@ def _apply_slots(state: SessionState, values: dict) -> dict:
     return changed
 
 
+def _gender_turn(state: SessionState, text: str, parsed: dict):
+    """Gender is filled only by an explicit answer or a confirmed hint. A hint ('bol raha hoon', even from the
+    identity check) makes Asha ask 'I'm assuming you're male, is that right?' instead of asking cold."""
+    if state.profile.get("gender") is not None:
+        return
+    hint = state.gender_hint
+    if hint in ("male", "female") and state.asked_slot == "gender":
+        if YES_RE.match(text) and not NO_RE.match(text):
+            parsed.update(_apply_slots(state, {"gender": hint}))
+            return
+        if NO_RE.match(text):
+            state.gender_hint = "rejected"
+    if state.gender_hint is None:
+        state.gender_hint = next((intake.gender_hint(t["text"]) for t in state.transcript
+                                  if t["role"] == "user" and intake.gender_hint(t["text"])), None)
+
+
 def _finish_intake(state: SessionState):
     state.snapshot = knowledge.profile_snapshot(dict(state.profile))
     state.phase = Phase.CONSULT
@@ -375,11 +407,7 @@ def _finish_intake(state: SessionState):
 
 async def _intake_turn(state: SessionState, text: str, on_tool_round=None) -> tuple:
     parsed = _apply_slots(state, intake.parse_turn(text, state.profile))
-    if state.profile.get("gender") is None:  # "bol raha hoon" during the identity check counts too
-        g = next((intake.parse_gender(t["text"], False) for t in state.transcript
-                  if t["role"] == "user" and intake.parse_gender(t["text"], False)), None)
-        if g:
-            parsed.update(_apply_slots(state, {"gender": g}))
+    _gender_turn(state, text, parsed)
     if not intake.missing(state.profile):
         _finish_intake(state)
         return await _consult_turn(state, text, on_tool_round)
@@ -398,6 +426,7 @@ async def _intake_turn(state: SessionState, text: str, on_tool_round=None) -> tu
         _finish_intake(state)
         reply, lang, ms2, calls = await _consult_turn(state, text, on_tool_round)
         return reply, lang, ms + ms2, calls
+    state.asked_slot = intake.next_slot(state.profile)
     return d["reply"], d["reply_language"], ms, []
 
 
@@ -480,6 +509,7 @@ async def handle_turn(state: SessionState, text: str, lang: str | None = None, o
     fallback = reply is None
     if fallback:
         reply, rlang = snippet("FALLBACK_REPLY"), "en-IN"
+    reply = redact_phone(reply, state.lead.get("phone"))
     state.add("agent", reply, rlang)
     events, state.events = state.events, []
     state.latencies.append({"llm_ms": ms})

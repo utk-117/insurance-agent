@@ -28,9 +28,13 @@ class TestParsing(unittest.TestCase):
         self.assertEqual(intake.parse_age("meri umar 38 saal hai", False), 38)
         self.assertEqual(intake.parse_age("34", True), 34)
         self.assertIsNone(intake.parse_age("12-15 lakh", False))
-        self.assertEqual(intake.parse_gender("haan ji, bol rahi hoon", False), "female")
-        self.assertEqual(intake.parse_gender("main naukri karta hoon", False), "male")
+        self.assertIsNone(intake.parse_gender("haan ji, bol rahi hoon", False))   # a hint, not an answer
+        self.assertEqual(intake.gender_hint("haan ji, bol rahi hoon"), "female")
+        self.assertEqual(intake.gender_hint("main naukri karta hoon"), "male")
+        self.assertEqual(intake.gender_hint("I'm a housewife"), "female")
         self.assertEqual(intake.parse_gender("female", True), "female")
+        self.assertEqual(intake.parse_gender("main mahila hoon", True), "female")
+        self.assertIsNone(intake.clean_llm_value("gender", "male"))  # the model's guess never fills the slot
         self.assertFalse(intake.parse_tobacco("no, never", True))
         self.assertFalse(intake.parse_tobacco("nahi", True))
         self.assertFalse(intake.parse_tobacco("I'm a non-smoker", False))

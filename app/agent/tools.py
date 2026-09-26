@@ -26,6 +26,13 @@ OUTCOMES = ["callback_scheduled", "purchase_link_sent", "purchase_link_and_callb
             "wrong_person", "dropped"]
 SECTION_CHARS = 3500
 MAX_CALLBACK_DAYS = 14
+CALLBACK_START_HOUR, CALLBACK_END_HOUR = 9, 21  # advisors call 9 AM - 9 PM IST
+CALLBACK_HOURS_TEXT = "9 AM to 9 PM IST"
+
+
+def in_callback_hours(dt) -> bool:
+    minutes = dt.hour * 60 + dt.minute
+    return CALLBACK_START_HOUR * 60 <= minutes <= CALLBACK_END_HOUR * 60
 
 
 def _pid():
@@ -73,8 +80,9 @@ def tool_specs() -> list:
              "insurer_slug": {"type": "string", "enum": sorted(knowledge.claims_history())}},
              "required": ["topic"]}},
         {"name": "book_callback",
-         "description": "Book the human advisor call. Only after you read back the full day, date and time and the "
-                        "customer said yes to it and to being called on their number.",
+         "description": "Book the human advisor call (advisors call 9 AM - 9 PM IST). Only after you read back the full "
+                        "day, date and time and the customer said yes, and confirmed the number they're talking on "
+                        "is the right one.",
          "parameters": {"type": "object", "properties": {
              "datetime_iso": {"type": "string", "description": "e.g. 2026-09-27T17:00:00+05:30 (IST)"},
              "product_ids": {"type": "array", "items": _pid()},
@@ -250,18 +258,24 @@ def book_callback(state, datetime_iso, customer_confirmed, product_ids=None, not
         return {"error": f"{dt:%A %d %B, %I:%M %p} is in the past (now {now:%A %d %B, %I:%M %p} IST). Ask again."}
     if dt > now + timedelta(days=MAX_CALLBACK_DAYS):
         return {"error": f"Callbacks can be booked up to {MAX_CALLBACK_DAYS} days ahead. Ask for an earlier time."}
+    if not in_callback_hours(dt):
+        return {"error": f"Not booked: {dt:%I:%M %p} is outside advisor hours ({CALLBACK_HOURS_TEXT}). Tell the "
+                         "customer and offer the nearest time inside that window."}
     if not customer_confirmed:
-        return {"error": "Not booked: read back the full day, date and time, get a clear yes (and consent to call "
-                         f"{state.lead.get('phone')}), then call again with customer_confirmed=true."}
+        return {"error": "Not booked: read back the full day, date and time, get a clear yes, and confirm the number "
+                         "they're talking on is the right one; then call again with customer_confirmed=true."}
     if not _read_back_ok(state, dt):
         return {"error": f"Not booked: you haven't read back {dt:%A, %d %B at %I:%M %p} to the customer yet. "
                          "Read it back and get a yes first."}
+    iso = dt.isoformat(timespec="minutes")
+    if state.callback_time == iso:  # same slot again ("yes that's right"): already booked, don't log twice
+        return {"booked": True, "already_booked": True, "callback_time_ist": f"{dt:%A, %d %B %Y at %I:%M %p}"}
     _note_products(state, *(product_ids or []))
-    ev = actions.log_callback(state, dt.isoformat(timespec="minutes"))
+    ev = actions.log_callback(state, iso)
     state.events.append(ev)
     state.phase = Phase.WRAP_UP
-    return {"booked": True, "callback_time_ist": f"{dt:%A, %d %B %Y at %I:%M %p}", "phone": state.lead.get("phone"),
-            "note": note}
+    return {"booked": True, "callback_time_ist": f"{dt:%A, %d %B %Y at %I:%M %p}",
+            "number": "the number the customer is talking on (don't say it)", "note": note}
 
 
 def share_purchase_link(state, product_id):

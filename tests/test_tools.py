@@ -119,6 +119,18 @@ class TestCloseGuards(unittest.TestCase):
         self.assertFalse(far["ok"])
         self.assertFalse(tools.run(self.s, "book_callback", {"datetime_iso": "kal", "customer_confirmed": True})["ok"])
 
+    def test_callback_outside_advisor_hours(self):
+        late = self.when.replace(hour=22)
+        say(self.s, f"Confirming {late:%A} {late.day} {late:%B} at 10 PM?", "yes")
+        r = tools.run(self.s, "book_callback", {"datetime_iso": late.isoformat(), "customer_confirmed": True})
+        self.assertFalse(r["ok"])
+        self.assertIn("9 AM to 9 PM IST", r["error"])
+        early = self.when.replace(hour=8, minute=30)
+        self.assertFalse(tools.run(self.s, "book_callback", {"datetime_iso": early.isoformat(),
+                                                             "customer_confirmed": True})["ok"])
+        self.assertTrue(tools.in_callback_hours(self.when.replace(hour=21, minute=0)))
+        self.assertFalse(tools.in_callback_hours(self.when.replace(hour=21, minute=15)))
+
     def test_callback_needs_read_back(self):
         say(self.s, "Sure, when would suit you?", "tomorrow 5 pm")
         r = tools.run(self.s, "book_callback", {"datetime_iso": self.when.isoformat(), "customer_confirmed": True})
@@ -126,13 +138,18 @@ class TestCloseGuards(unittest.TestCase):
         self.assertIn("read back", r["error"])
 
     def test_callback_books_and_logs(self):
-        say(self.s, f"Just to confirm: {self.when:%A}, {self.when.day} {self.when:%B} at 5 PM on 9876543210?", "Yes")
+        say(self.s, f"Just to confirm: {self.when:%A}, {self.when.day} {self.when:%B} at 5 PM, on the number you're "
+                    "talking on?", "Yes")
         r = tools.run(self.s, "book_callback", {"datetime_iso": self.when.isoformat(), "customer_confirmed": True,
                                                 "product_ids": ["hdfc-c2p-supreme"]})
         self.assertTrue(r["ok"], r)
+        self.assertNotIn("9876543210", str(r))  # the model never gets the number back
         self.assertEqual(self.s.outcome, "callback_scheduled")
         self.assertEqual(self.s.phase, Phase.WRAP_UP)
         self.assertEqual(self.s.events[-1]["type"], "callback_booked")
+        again = tools.run(self.s, "book_callback", {"datetime_iso": self.when.isoformat(), "customer_confirmed": True})
+        self.assertTrue(again["already_booked"])
+        self.assertEqual(sum(e["type"] == "callback_booked" for e in self.s.events), 1)  # one booking, one event
         rows = pathlib.Path(self.tmp).read_text()
         self.assertIn("callback_scheduled", rows)
         self.assertIn(self.s.session_id, rows)

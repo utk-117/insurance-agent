@@ -19,7 +19,8 @@ _SELF_EMP = re.compile(r"\b(self[- ]?employed|business|businessman|dukaan|dukan|
                        r"proprietor|entrepreneur)\b", re.I)
 _SALARIED = re.compile(r"\b(salaried|salary|job|naukri|employee|employed|work(?:ing)? (?:at|in|for)|"
                        r"private company|govt|government|sarkari|mnc|it company)\b", re.I)
-_FEMALE = re.compile(r"\b(female|woman|lady|ladki|mahila|aurat|housewife|homemaker|gruhini|grihini)\b", re.I)
+_FEMALE = re.compile(r"\b(female|woman|lady|ladki|mahila|aurat)\b", re.I)
+_FEMALE_HINT = re.compile(r"\b(housewife|homemaker|gruhini|grihini)\b", re.I)
 _MALE = re.compile(r"\b(male|man|gent|ladka|purush|aadmi)\b", re.I)
 _FEMALE_FORMS = re.compile(r"\b(rahi|rehti|rahti|karti|chahti|sakti|gayi|jaati|leti|deti|sochti|hoti) (hoon|hun|hu)\b", re.I)
 _MALE_FORMS = re.compile(r"\b(raha|rehta|rahta|karta|chahta|sakta|gaya|jaata|leta|deta|sochta|hota) (hoon|hun|hu)\b", re.I)
@@ -45,9 +46,19 @@ def parse_age(text: str, expecting: bool) -> int | None:
 
 
 def parse_gender(text: str, expecting: bool) -> str | None:
-    if _FEMALE_FORMS.search(text) or _FEMALE.search(text):
+    """Explicit gender only ("male", "I'm a woman", "mahila"). Verb forms are a hint to confirm, not an answer."""
+    if _FEMALE.search(text):
         return "female"
-    if _MALE_FORMS.search(text) or _MALE.search(text):
+    if _MALE.search(text):
+        return "male"
+    return None
+
+
+def gender_hint(text: str) -> str | None:
+    """Gender implied by Hindi first-person verb forms ('bol rahi hoon') or 'housewife'. Must be confirmed."""
+    if _FEMALE_FORMS.search(text) or _FEMALE_HINT.search(text):
+        return "female"
+    if _MALE_FORMS.search(text):
         return "male"
     return None
 
@@ -149,9 +160,8 @@ def clean_llm_value(slot: str, v):
             return None
         lo, hi = next(q["valid"] for q in knowledge.underwriting_rules()["intake_questions"] if q["slot"] == "age")
         return a if lo <= a <= hi else None
-    if slot == "gender":
-        s = str(v).lower()
-        return s if s in ("male", "female", "other") else parse_gender(s, True)
+    if slot == "gender":  # the model's guess isn't enough: code fills gender from explicit words or a confirmed hint
+        return None
     if slot == "employment_type":
         s = str(v).lower().replace("-", "_").replace(" ", "_")
         return s if s in EMPLOYMENT else parse_employment(str(v), True)

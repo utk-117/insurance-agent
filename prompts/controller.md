@@ -11,6 +11,9 @@
 ## RESOLVED_TIME
 - Code resolved the time the customer just mentioned as {when} ({iso}). Read it back exactly like that.
 
+## OUTSIDE_HOURS
+- That time is outside advisor hours ({hours}). Say so and offer the nearest time inside that window.
+
 ## RESOLVED_AMOUNT
 - Code read the amount in the customer's latest message as {amount}. Use exactly this amount (in words) when you
   talk about it or pass it to a tool.
@@ -28,6 +31,15 @@ Brochure sections the customer's words point to (already loaded, no tool call ne
 - Still missing, in order: {missing}
 - NEXT SLOT: {next_slot}. Suggested wording (already in the customer's language): "{ask}"
 - If the latest message already answers the NEXT SLOT, ask for the one after it. Never ask anything else.
+
+## GENDER_CONFIRM_EN
+I'm assuming you're {gender} — could you please confirm?
+
+## GENDER_CONFIRM_HI
+Main maan rahi hoon ki aap {gender} hain — kya aap confirm kar sakte hain?
+
+## PHONE_WORDS
+your number
 
 ## OUTPUT_SIMPLE
 Return ONLY a JSON object: {"reply": "<what you say>", "reply_language": "en-IN|hi-IN|...",
