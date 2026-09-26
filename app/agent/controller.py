@@ -194,14 +194,16 @@ def _snapshot_text(state: SessionState) -> str:
         eligible.append(item)
     across = {}
     for e in s["eligible"]:
+        if e["type"] != "term":  # pure term only; return-of-premium plans are priced very differently
+            continue
         for q in e.get("quotes", []):
             lo, hi = q["annual_premium_range"]
             a = across.setdefault(q["sum_assured"], [lo, hi])
             a[0], a[1] = min(a[0], lo), max(a[1], hi)
     compact = {"profile": prof, "max_cover": money(s["max_cover"]) if s["max_cover"] else None,
-               "across_eligible_term_plans": [
+               "across_eligible_pure_term_plans": [
                    {"cover": money(sa), "indicative_premium": money_range(lo, hi),
-                    "say": f"Across the eligible term plans, {money(sa)} cover is about {money_range(lo, hi)}."}
+                    "say": f"Across the eligible pure term plans, {money(sa)} cover is about {money_range(lo, hi)}."}
                    for sa, (lo, hi) in sorted(across.items())] or None,
                "max_cover_rule": s["max_cover_rule"], "eligible": eligible,
                "excluded": [{"product": _label(x["product_id"]), "reason": words_in_text(x["reason"], bare=True)}

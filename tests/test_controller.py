@@ -328,9 +328,10 @@ class TestGroundedLines(unittest.TestCase):
                      "tobacco": False}
         c._finish_intake(s)
         snap = json.loads(c._snapshot_text(s))
-        crore = next(a for a in snap["across_eligible_term_plans"] if a["cover"] == "₹1 crore")
+        crore = next(a for a in snap["across_eligible_pure_term_plans"] if a["cover"] == "₹1 crore")
         lows = [p["price_ranges"][0]["indicative_premium"] for p in snap["eligible"] if p.get("price_ranges")]
-        self.assertTrue(crore["say"].startswith("Across the eligible term plans, ₹1 crore cover is about"))
+        self.assertEqual(crore["say"], "Across the eligible pure term plans, ₹1 crore cover is about "
+                                       "₹11,500 – ₹21,500 a year.")  # Swadhan (return of premium) left out
         self.assertTrue(lows)
         claims = json.loads(c._claims_text(s))
         self.assertIn("As per IRDAI data for FY 2024-25, SBI Life paid 95.26%", claims["say"]["SBI Life"])

@@ -127,3 +127,25 @@ def split_sentences(text: str, min_len: int = 40, max_len: int = 400) -> list:
         if s:
             final.append(s)
     return final
+
+
+def split_for_tts(text: str, first_min: int = 12, first_max: int = 70) -> list:
+    """Chunks for streaming TTS: a SHORT first chunk (one short sentence or clause) so audio starts sooner, then
+    the rest in normal sentence chunks. TTS time grows with text length, and the first chunk is what the
+    customer waits for."""
+    text = text.strip()
+    if not text:
+        return []
+    parts = [p.strip() for p in re.split(r"(?<=[.!?।])\s+", text) if p.strip()]
+    first = parts[0]
+    i = 1
+    while len(first) < first_min and i < len(parts):  # "Sure." alone is too short to sound natural
+        first = f"{first} {parts[i]}"
+        i += 1
+    rest = " ".join(parts[i:])
+    if len(first) > first_max:  # long first sentence: cut at the first clause break
+        m = re.search(r"[,;:—–]\s+", first[first_min:first_max])
+        if m:
+            cut = first_min + m.end()
+            first, rest = first[:cut].strip(), f"{first[cut:].strip()} {rest}".strip()
+    return [first] + (split_sentences(rest) if rest else [])

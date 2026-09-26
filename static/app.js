@@ -24,7 +24,13 @@
   }
   function renderState(s) {
     $('stage').textContent = s.stage.replace('_', ' ');
-    const inr = (n) => '₹' + Number(n).toLocaleString('en-IN');
+    const inr = (n) => {  // Indian words, like Asha says them: ₹3 crore, ₹12 lakh, ₹18,500
+      n = Number(n);
+      const f = (x) => String(Math.round(x * 100) / 100);
+      if (n >= 1e7) return `₹${f(n / 1e7)} crore`;
+      if (n >= 1e5) return `₹${f(n / 1e5)} lakh`;
+      return '₹' + n.toLocaleString('en-IN');
+    };
     const rows = Object.entries(s.profile || {}).map(([k, v]) => [k, k === 'annual_income_inr' ? inr(v) : String(v)]);
     if (s.max_cover) rows.push(['max cover', inr(s.max_cover)]);
     if (s.discussed && s.discussed.length) rows.push(['discussed', s.discussed.join(', ')]);
@@ -44,7 +50,8 @@
     for (const p of s.shortlist || []) {
       const q = (p.quotes || [])[0];
       const li = document.createElement('li');
-      li.textContent = `${p.insurer} — ${p.name}` + (q ? ` · ${inr(q.sum_assured)} cover ≈ ${inr(q.range[0])}–${inr(q.range[1])}/yr` : '');
+      const name = p.name.startsWith(p.insurer.split(' ')[0]) ? p.name : `${p.insurer} ${p.name}`;
+      li.textContent = name + (q ? ` · ${inr(q.sum_assured)} cover ≈ ${inr(q.range[0])}–${inr(q.range[1])}/yr` : '');
       ol.append(li);
     }
   }
@@ -105,7 +112,7 @@
   function connect() {
     const proto = location.protocol === 'https:' ? 'wss://' : 'ws://';
     ws = new WebSocket(`${proto}${location.host}/ws/${sessionId}`);
-    ws.onopen = () => { reconnects = 0; send({ type: 'hello', mime }); $('talk').disabled = false; $('callErr').textContent = ''; };
+    ws.onopen = () => { reconnects = 0; send({ type: 'hello', mime }); $('talk').disabled = !stream; $('callErr').textContent = ''; };
     ws.onmessage = (e) => {
       const m = JSON.parse(e.data);
       switch (m.type) {
@@ -166,10 +173,11 @@
   $('startForm').onsubmit = async (e) => {
     e.preventDefault();
     $('startErr').textContent = ''; $('startBtn').disabled = true;
+    let textOnly = false;
     try {
       stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
     } catch (err) {
-      $('startErr').textContent = 'Microphone permission is needed for the voice call.'; $('startBtn').disabled = false; return;
+      textOnly = true;  // no mic (or permission denied): still usable by typing, Asha still speaks
     }
     mime = pickMime();
     player.play().catch(() => {}); // unlock audio playback on this user gesture
@@ -183,9 +191,14 @@
       sessionId = j.session_id;
     } catch (err) {
       $('startErr').textContent = err.message; $('startBtn').disabled = false;
-      stream.getTracks().forEach((t) => t.stop()); return;
+      if (stream) stream.getTracks().forEach((t) => t.stop());
+      return;
     }
     $('start').style.display = 'none'; $('call').style.display = 'block';
+    if (textOnly) {
+      $('talk').style.display = 'none';
+      $('talkHint').textContent = 'No microphone available — type your replies below. Asha will still speak.';
+    }
     status('thinking', 'Connecting…');
     connect();
   };

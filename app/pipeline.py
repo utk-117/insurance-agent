@@ -15,7 +15,7 @@ import time
 from app.adapters.base import ProviderError, get_stt, get_tts
 from app.agent import controller, knowledge
 from app.agent.state import SessionState
-from app.normalize import normalize, split_sentences
+from app.normalize import normalize, split_for_tts
 
 log = logging.getLogger("pipeline")
 
@@ -55,7 +55,7 @@ async def transcribe(audio: bytes, mime: str) -> dict:
 
 async def speak(send, text: str, lang: str, turn_id: int, t0: float) -> dict:
     """Normalize + split, fire TTS for all chunks at once, send audio in order as each is ready."""
-    chunks = split_sentences(normalize(text)) or [normalize(text)]
+    chunks = split_for_tts(normalize(text)) or [normalize(text)]
     tts = get_tts()
     tasks = [asyncio.create_task(tts.speak(c, lang)) for c in chunks if c.strip()]
     first_ms = first_total = None

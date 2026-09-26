@@ -1,6 +1,6 @@
 import unittest
 
-from app.normalize import normalize as n, split_sentences
+from app.normalize import normalize as n, split_for_tts, split_sentences
 
 CASES = [
     ("Cover of ₹5,00,000 is available.", "Cover of 5 lakh rupees is available."),
@@ -47,6 +47,22 @@ class TestNormalize(unittest.TestCase):
         self.assertTrue(all(len(x) <= 400 for x in split_sentences(long)))
         self.assertEqual(split_sentences("Haan ji। Bilkul theek hai, main advisor ka call book kar deti hoon।"),
                          ["Haan ji। Bilkul theek hai, main advisor ka call book kar deti hoon।"])
+
+
+class TestSplitForTTS(unittest.TestCase):
+    def test_short_first_chunk(self):
+        c = split_for_tts("Got it. For 30 crore cover, the indicative yearly premium is roughly 8.6 lakh to 13.45 lakh "
+                          "for HDFC. However, 30 crore is above your limit. Shall I set up an advisor call?")
+        self.assertEqual(c[0], "Got it. For 30 crore cover,")  # "Got it." is too short alone; cut at the clause
+        self.assertLessEqual(len(c[0]), 70)
+        self.assertEqual(" ".join(c).replace("  ", " "), "Got it. For 30 crore cover, the indicative yearly premium is "
+                         "roughly 8.6 lakh to 13.45 lakh for HDFC. However, 30 crore is above your limit. Shall I set "
+                         "up an advisor call?")
+
+    def test_short_reply_is_one_chunk(self):
+        self.assertEqual(split_for_tts("Sure, cutting the call now. Have a nice day, Rahul!"),
+                         ["Sure, cutting the call now.", "Have a nice day, Rahul!"])
+        self.assertEqual(split_for_tts(""), [])
 
 
 if __name__ == "__main__":
