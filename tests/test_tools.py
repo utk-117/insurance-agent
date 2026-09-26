@@ -163,7 +163,19 @@ class TestCloseGuards(unittest.TestCase):
         self.assertEqual(self.s.outcome, "purchase_link_sent")
         self.assertEqual(self.s.events[-1]["type"], "purchase_link")
 
+    def test_end_conversation_needs_the_customer_to_end(self):
+        # live bug: the model asked the open consult question AND called end_conversation
+        self.s.add("user", "nahi, kabhi nahi")  # answer to the tobacco question
+        r = tools.run(self.s, "end_conversation", {"outcome": "not_interested", "goodbye": "Bye"})
+        self.assertFalse(r["ok"])
+        self.assertEqual(self.s.phase, Phase.CONSULT)
+        for said in ("cut the call", "no thanks, bye", "abhi nahi chahiye", "that's all"):
+            s2 = consult_state()
+            s2.add("user", said)
+            self.assertTrue(tools.run(s2, "end_conversation", {"outcome": "not_interested", "goodbye": "Bye"})["ok"], said)
+
     def test_end_conversation_cannot_fake_a_close(self):
+        self.s.add("user", "okay bye")
         r = tools.run(self.s, "end_conversation", {"outcome": "callback_scheduled", "goodbye": "Bye!"})
         self.assertEqual(r["outcome"], "dropped")  # no callback was booked
         self.assertEqual(self.s.phase, Phase.END)
@@ -173,6 +185,7 @@ class TestCloseGuards(unittest.TestCase):
         self.assertEqual((self.s.outcome, self.s.goodbye), ("dropped", "Bye!"))
         s2 = consult_state()
         s2.callback_time = "2026-09-27T17:00+05:30"
+        s2.phase = Phase.WRAP_UP  # after a booking, ending is always allowed
         self.assertEqual(tools.run(s2, "end_conversation", {"outcome": "not_interested"})["outcome"],
                          "callback_scheduled")
 

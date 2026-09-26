@@ -102,7 +102,68 @@ Prompt size: ~11k input tokens per turn (cards ~6k + process + sections); LLM 0.
   after the customer has already waited > 1.5 s.
 - Lead log: v2 columns; an older `data/leads.csv` with v1 columns is moved aside, not mixed.
 
+## M3 — evals + swap test (26 Sep 2026)
+Setup: 24 v2 cases (`evals/cases.yaml`, CLAUDE.md "Eval cases (v2)"; case 21 is covered by `tests/test_tools.py`),
+code checks + an LLM judge. Same judge for every provider (`claude-opus-5`, effort medium) so scores compare.
+Agent models: Sarvam `sarvam-105b-conversations` (reasoning off) vs Claude `claude-opus-5` (effort low).
+Caveat: a Claude judge may favour Claude transcripts.
+
+**Round 1 (both providers, judged)** — `evals/results/sarvam-20260926-213619.json`, `anthropic-20260926-213743.json`
+
+| | Sarvam | Claude (opus-5) |
+|---|---|---|
+| must cases passed | 17/24 | 17/24 (case 22 lost to Anthropic credits running out) |
+| intake_clean | 0.89 | 1.00 |
+| intent_understood | 1.00 | 1.00 |
+| fit_explained | 0.77 | 0.33 (asks follow-ups before recommending) |
+| grounded | 0.96 | 1.00 |
+| price_with_disclaimer | 0.92 | 0.80 |
+| moves_to_close | 0.30 | 0.20 (short scripts end before a close) |
+| objection_handled_once | 0.83 | 0.88 |
+| no_pressure | 1.00 | 1.00 |
+| respects_no | 0.75 | 0.67 |
+| **mean** | **0.82** | **0.76** |
+| tool calls in 24 cases | 18 (16 rounds) | 3 |
+| LLM turn latency (CLI, not benchmarked) | ~0.4–1.2 s | ~2–6.7 s |
+
+Failures and what was done:
+- Harness: judge crashed on `annual_premium: "1 lakh"` -> parsed with `money.parse_amount`.
+- **Sarvam asked income after "retired" / "housewife", then stored the customer's "no" as the tobacco answer**
+  (a question that was never asked). Fix in code: every intake reply's question must ask the NEXT slot and not
+  income/tobacco out of turn (`_asks_slot`); otherwise code asks the slot in the standard wording.
+- **At age 88 Claude said "savings plans are still possible"; Sarvam named two HDFC savings plans** — nothing is
+  eligible at 88. Fix: not-working options filtered to eligible products; `NO_ELIGIBLE` instruction when
+  SNAPSHOT.eligible is empty.
+- **Sarvam called `end_conversation` together with the consult-opening question** (session ended mid-sentence).
+  Fix: `end_conversation` only works when the customer's last message signals ending (bye / cut the call / not
+  interested / that's all …) or after a booking. Round 2 shows the guard catching it (2 occurrences).
+- Case scripts 4 and 7 ended one turn too early; case 14's assertion was stricter than CLAUDE.md -> fixed.
+- Prompts (both providers missed these): rail 2 now says to *offer* the advisor call when something isn't in the
+  brochure; objections.md: when a concern comes back, no new option / cover / price — advisor call once or close.
+
+**Round 2 (Sarvam, code checks only, after the fixes):** 22/24. Case 22 = Sarvam credits ran out mid-run (402).
+Red team: Sarvam said "your premium will rise as you get older" — a pressure line rail 11 forbids; still open.
+With a Sarvam judge (not comparable to round 1), cases 16 (offer advisor for out-of-brochure) and 17 (no second
+push after "can't afford") still fail on Sarvam after the prompt edits: Sarvam doesn't follow those reliably.
+
+Not done (both accounts out of credits): Claude re-run after the fixes, final judged scorecards for both, Claude
+latency benchmark.
+
 ## Latency / cost
+`scripts/bench.py` — fixed audio clips + 4 fixed turns through the real voice pipeline (STT -> controller ->
+first-sentence TTS), 5 runs, from a laptop in India (`data/bench/bench-20260926-214631.csv`):
+
+| sarvam (all three) | p50 ms | p90 ms |
+|---|---|---|
+| STT (saaras:v3) | 242 | 306 |
+| LLM (sarvam-105b-conversations) | 466 | 833 |
+| TTS first chunk (bulbul:v3) | 2,500 | 3,847 |
+| **total to first audio** | **3,601** | **4,476** |
+
+TTS of the first chunk dominates (~70% of time to first audio), not the LLM. Next step for M4: make the first
+chunk short (first clause only) and stream the rest. Price/claims turns are slower (~4.0–4.4 s) than intake /
+detail turns (~2.1 s) because their first sentence is longer. ~15.7k input tokens per LLM call.
+
 First smoke run (2026-09-25, from a laptop in India, single calls — not a benchmark):
 | call | ms |
 |---|---|

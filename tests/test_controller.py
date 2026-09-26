@@ -1,5 +1,6 @@
 """M2b: v2 phase controller end to end with a scripted fake LLM (no network)."""
 import asyncio
+import json
 import pathlib
 import re
 import tempfile
@@ -107,7 +108,7 @@ class TestFlow(Base):
             r = await c.handle_turn(s, "Yes")
             self.assertEqual(r["events"][0]["type"], "callback_booked")
             self.assertEqual(s.phase, Phase.WRAP_UP)
-            r = await c.handle_turn(s, "No, that's all, bye")
+            r = await c.handle_turn(s, "No, that's all, bye")  # WRAP_UP after the booking
             self.assertTrue(r["ended"])
             return s
 
@@ -263,6 +264,53 @@ class TestPhoneAndHours(Base):
         ok = sys_text(c.build_system(s, Phase.CLOSE, c.snippet("OUTPUT_CONSULT"), "tomorrow at 5 pm"))
         self.assertIn("outside advisor hours (9 AM to 9 PM IST)", late)
         self.assertNotIn("outside advisor hours", ok)
+
+
+class TestIntakeGuard(Base):
+    def test_asks_slot(self):
+        self.assertTrue(c._asks_slot("Got it, 12 lakh a year. Have you used any tobacco in the last 12 months?", "tobacco"))
+        self.assertTrue(c._asks_slot("Aapki saalana income lagbhag kitni hai? Range bhi chalega.", "annual_income_inr"))
+        self.assertFalse(c._asks_slot("Understood. Roughly what is your annual family income?", "tobacco"))
+        self.assertFalse(c._asks_slot("Noted. What is your income, and do you smoke?", "annual_income_inr"))
+
+    def test_wrong_question_is_replaced(self):
+        # live bug (Sarvam): housewife -> model asked income anyway; next "no" was stored as tobacco
+        fake = FakeLLM(json_replies=[{"reply": "Understood. Roughly what is your annual family income?",
+                                      "reply_language": "en-IN", "extracted": {}, "intent": "answered"}])
+
+        async def convo():
+            s = c.new_session("Priya", "9876543210")
+            s.phase = Phase.INTAKE
+            s.profile.update(age=28, gender="female")
+            s.add("agent", "Are you salaried, self-employed, or not working at the moment?")
+            return s, await c.handle_turn(s, "I'm a housewife")
+
+        s, r = self.run_with(fake, convo())
+        self.assertEqual(s.profile["employment_type"], "not_working")
+        self.assertNotIn("income", r["reply"].lower())
+        self.assertIn("tobacco", r["reply"].lower())
+        self.assertEqual(s.asked_slot, "tobacco")
+
+    def test_not_working_options_limited_to_eligible(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.profile = {"age": 88, "gender": "male", "employment_type": "not_working", "annual_income_inr": None,
+                     "tobacco": False}
+        c._finish_intake(s)
+        snap = json.loads(c._snapshot_text(s))
+        self.assertEqual(snap["eligible"], [])
+        self.assertTrue(all(not o["products"] for o in snap["not_working_options"]))  # only "advisor" remains
+
+
+class TestLanguage(unittest.TestCase):
+    def test_hinglish_speaker_stays_hinglish_on_short_answers(self):
+        s = c.new_session("Sunita", "9876543210")
+        for t in ("Haan ji, bol rahi hoon", "34 saal", "salaried hoon, private company"):
+            s.add("user", t)
+        self.assertEqual(c.customer_language(s), "Hinglish")
+        e = c.new_session("Rahul", "9876543210")
+        for t in ("Yes, speaking", "I'm 30", "salaried"):
+            e.add("user", t)
+        self.assertEqual(c.customer_language(e), "English")
 
 
 class TestEnding(Base):

@@ -74,8 +74,10 @@ WEEKDAYS = {"monday": 0, "tuesday": 1, "wednesday": 2, "thursday": 3, "friday": 
             "somvar": 0, "mangalvar": 1, "budhvar": 2, "guruvar": 3, "shukravar": 4, "shanivar": 5, "ravivar": 6}
 PM_WORDS = ("pm", "p.m", "shaam", "sham", "evening", "raat", "night", "dopahar", "afternoon")
 AM_WORDS = ("am", "a.m", "subah", "morning")
-HINDI_WORDS = re.compile(r"\b(hai|hain|nahi|nahin|kya|mera|meri|mujhe|aap|aapka|haan|kal|baje|mein|hoon|"
-                         r"kar|karo|chahiye|theek|bhi|toh|kaise|kitna|lagega|batao|bataiye|ji|abhi|wala|wali)\b", re.I)
+HINDI_WORDS = re.compile(r"\b(hai|hain|nahi|nahin|kya|mera|meri|mujhe|aap|aapka|haan|kal|baje|mein|hoon|hun|"
+                         r"kar|karo|chahiye|theek|bhi|toh|kaise|kitna|lagega|batao|bataiye|ji|abhi|wala|wali|"
+                         r"saal|umar|sahi|boliye|bol|rahi|raha|mahina|hazaar|lakh ka|kabhi|bilkul|accha|achha|"
+                         r"shaam|subah|ghar|bacch\w*|papa|mummy|paisa|kaam|naukri)\b", re.I)
 
 
 def parse_time_text(text: str | None, now: datetime | None = None):
@@ -130,15 +132,20 @@ def text_language(text: str) -> str:
 
 
 def customer_language(state: SessionState) -> str:
-    """Language of the customer's last real sentence (a bare "36" or "male" doesn't switch it)."""
+    """Language of the customer's recent messages: Hindi / Hinglish if any of the last 3 real sentences is (a bare
+    "36" or "salaried" doesn't switch a Hinglish speaker to English)."""
     users = [t for t in state.transcript if t["role"] == "user"]
-    last = next((t for t in reversed(users) if len(t["text"].split()) >= 2), users[-1] if users else None)
-    if not last:
+    if not users:
         return "unknown"
-    lang = text_language(last["text"])
-    if lang == "English" and last.get("lang") and last["lang"] not in ("en-IN", None):
+    recent = [t for t in users if len(t["text"].split()) >= 2][-3:] or users[-1:]
+    langs = [text_language(t["text"]) for t in recent]
+    for lang in ("Hindi (Devanagari)", "Hinglish"):
+        if lang in langs:
+            return lang
+    last = recent[-1]
+    if last.get("lang") and last["lang"] not in ("en-IN", None):
         return last["lang"]
-    return lang
+    return "English"
 
 
 def reply_lang_code(reply: str) -> str:
@@ -189,8 +196,22 @@ def _snapshot_text(state: SessionState) -> str:
                "max_cover_rule": s["max_cover_rule"], "eligible": eligible,
                "excluded": [{"product": _label(x["product_id"]), "reason": words_in_text(x["reason"], bare=True)}
                             for x in s["excluded"]],
-               "not_working_options": s.get("not_working_options"), "disclaimer": s["disclaimer"]}
+               "not_working_options": _eligible_options(s), "disclaimer": s["disclaimer"]}
     return json.dumps(compact, ensure_ascii=False)
+
+
+def _eligible_options(snap: dict):
+    """not_working_options from the rules, limited to products this customer is actually eligible for."""
+    opts = snap.get("not_working_options")
+    if not opts:
+        return None
+    eligible = {e["product_id"] for e in snap["eligible"]}
+    out = []
+    for o in opts:
+        prods = [p for p in o["products"] if p.split(" ")[0] in eligible]
+        if prods or not o["products"]:
+            out.append({**o, "products": prods})
+    return out
 
 
 def _claims_text(state: SessionState) -> str:
@@ -255,6 +276,8 @@ def _current_turn(state: SessionState, text: str = "") -> str:
         pre = _prefetch_text(state, text)
         if pre:
             extra.append(pre)
+        if state.snapshot and not state.snapshot["eligible"]:
+            extra.append(snippet("NO_ELIGIBLE"))
     return snippet("CURRENT_TURN", now_ist=_fmt_time(now), week=_week(now), language=customer_language(state),
                    extra="\n".join(extra))
 
@@ -379,6 +402,24 @@ def _apply_slots(state: SessionState, values: dict) -> dict:
     return changed
 
 
+SLOT_WORDS = {
+    "age": r"\b(age|old|umar|umra|saal ke|kitne saal)\b",
+    "gender": r"\b(gender|male|female|mahila|purush|ladka|ladki)\b",
+    "employment_type": r"\b(salaried|self[- ]employed|working|job|naukri|kaam|business)\b",
+    "annual_income_inr": r"\b(income|salary|earn|kamai|kamaate|kamate|aamdani|saalana|yearly|annual)\b",
+    "tobacco": r"\b(tobacco|nicotine|smok\w*|cigarette|gutka|gutkha|bidi|beedi|khaini|pan masala)\b",
+}
+
+
+def _asks_slot(reply: str, slot: str) -> bool:
+    """The question part of an intake reply must ask for `slot`, and not for income / tobacco out of turn."""
+    parts = re.split(r"(?<=[.!?।])\s+", reply.strip())
+    question = " ".join(p for p in parts if "?" in p) or parts[-1]
+    if not re.search(SLOT_WORDS[slot], question, re.I):
+        return False
+    return not any(o != slot and re.search(SLOT_WORDS[o], question, re.I) for o in ("annual_income_inr", "tobacco"))
+
+
 def _gender_turn(state: SessionState, text: str, parsed: dict):
     """Gender is filled only by an explicit answer or a confirmed hint. A hint ('bol raha hoon', even from the
     identity check) makes Asha ask 'I'm assuming you're male, is that right?' instead of asking cold."""
@@ -426,8 +467,21 @@ async def _intake_turn(state: SessionState, text: str, on_tool_round=None) -> tu
         _finish_intake(state)
         reply, lang, ms2, calls = await _consult_turn(state, text, on_tool_round)
         return reply, lang, ms + ms2, calls
-    state.asked_slot = intake.next_slot(state.profile)
-    return d["reply"], d["reply_language"], ms, []
+    reply, nxt = d["reply"], intake.next_slot(state.profile)
+    if state.phase == Phase.INTAKE and nxt and d.get("intent") != "question" and not _asks_slot(reply, nxt):
+        # the model asked the wrong thing (e.g. income from a housewife): code asks the right slot instead,
+        # otherwise the customer's next answer would be stored against a question that was never asked
+        english = customer_language(state) in ("English", "unknown")
+        q = intake.question(nxt)
+        ask = q["ask_en"] if english else q["ask_hi"]
+        if nxt == "gender" and state.gender_hint in ("male", "female"):
+            ask = snippet("GENDER_CONFIRM_EN" if english else "GENDER_CONFIRM_HI", gender=state.gender_hint)
+        log.info(json.dumps({"event": "intake_reply_replaced", "session": state.session_id, "want": nxt,
+                             "model_reply": reply}, ensure_ascii=False))
+        state.metrics["intake_overrides"] = state.metrics.get("intake_overrides", 0) + 1
+        reply = f"{snippet('ACK_EN' if english else 'ACK_HI')} {ask}"
+    state.asked_slot = nxt
+    return reply, d["reply_language"], ms, []
 
 
 # ---- consult: tool loop -----------------------------------------------------------------------

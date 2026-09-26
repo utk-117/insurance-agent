@@ -45,16 +45,21 @@ _instances = {}
 
 
 def get(kind: str, provider: str | None = None):
-    """Return a (cached) adapter instance for kind in {stt, tts, llm}."""
-    provider = (provider or os.getenv(f"{kind.upper()}_PROVIDER") or "sarvam").lower()
+    """Return a (cached) adapter instance for kind in {stt, tts, llm}. "anthropic:claude-sonnet-5" picks a model."""
+    provider = provider or os.getenv(f"{kind.upper()}_PROVIDER") or "sarvam"
+    name, _, model = provider.partition(":")
+    name = name.lower()
     key = (kind, provider)
     if key not in _instances:
         try:
-            target = REGISTRY[kind][provider]
+            target = REGISTRY[kind][name]
         except KeyError:
-            raise ValueError(f"unknown {kind} provider '{provider}'; known: {list(REGISTRY[kind])}")
+            raise ValueError(f"unknown {kind} provider '{name}'; known: {list(REGISTRY[kind])}")
         mod, cls = target.split(":")
-        _instances[key] = getattr(importlib.import_module(mod), cls)()
+        inst = getattr(importlib.import_module(mod), cls)()
+        if model:
+            inst.model = model
+        _instances[key] = inst
     return _instances[key]
 
 

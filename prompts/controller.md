@@ -18,6 +18,10 @@
 - Code read the amount in the customer's latest message as {amount}. Use exactly this amount (in words) when you
   talk about it or pass it to a tool.
 
+## NO_ELIGIBLE
+- SNAPSHOT.eligible is EMPTY: none of the plans accept this customer (age or income). Say so plainly and kindly,
+  do not name or suggest any plan, and offer a call with the advisor.
+
 ## QUOTED
 - Price ranges already given this session: {quoted}
 
@@ -31,6 +35,12 @@ Brochure sections the customer's words point to (already loaded, no tool call ne
 - Still missing, in order: {missing}
 - NEXT SLOT: {next_slot}. Suggested wording (already in the customer's language): "{ask}"
 - If the latest message already answers the NEXT SLOT, ask for the one after it. Never ask anything else.
+
+## ACK_EN
+Got it.
+
+## ACK_HI
+Theek hai.
 
 ## GENDER_CONFIRM_EN
 I'm assuming you're {gender} — could you please confirm?

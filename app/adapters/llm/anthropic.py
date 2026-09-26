@@ -16,6 +16,26 @@ REPAIR = ("Your previous reply was not a single valid JSON object matching the r
           "Reply again with ONLY the JSON object.")
 
 
+def strict_schema(schema):
+    """Claude structured outputs need additionalProperties: false on every object; our schemas are shared with
+    Sarvam, which doesn't, so add it here (deep copy, recursive)."""
+    if isinstance(schema, dict):
+        t = schema.get("type")
+        if isinstance(t, list) and "null" in t and "enum" in schema:  # nullable enum -> anyOf [enum, null]
+            base = {k: v for k, v in schema.items() if k not in ("type", "enum")}
+            real = [x for x in t if x != "null"]
+            return {**base, "anyOf": [{"type": real[0] if len(real) == 1 else real,
+                                       "enum": [e for e in schema["enum"] if e is not None]}, {"type": "null"}]}
+        out = {k: strict_schema(v) for k, v in schema.items()}
+        if out.get("type") == "object" or (isinstance(out.get("type"), list) and "object" in out["type"]):
+            out["additionalProperties"] = False
+            out.setdefault("properties", {})
+        return out
+    if isinstance(schema, list):
+        return [strict_schema(x) for x in schema]
+    return schema
+
+
 def system_blocks(system) -> list:
     if isinstance(system, str):
         return [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
@@ -39,7 +59,7 @@ class AnthropicLLM:
         self.client = anthropic.AsyncAnthropic()
 
     async def _call(self, system, messages, schema):
-        output_config = {"format": {"type": "json_schema", "schema": schema}}
+        output_config = {"format": {"type": "json_schema", "schema": strict_schema(schema)}}
         if self.effort:
             output_config["effort"] = self.effort
         with timed() as t:

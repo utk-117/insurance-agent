@@ -28,7 +28,7 @@ sys.path.insert(0, str(ROOT))
 
 import yaml  # noqa: E402  (installed with uvicorn[standard])
 
-from app.adapters.base import LLMParseError, ProviderError  # noqa: E402
+from app.adapters.base import LLMParseError, ProviderError, get_llm  # noqa: E402
 from app.adapters.llm.sarvam import SarvamLLM  # noqa: E402
 from app.agent import controller, knowledge  # noqa: E402
 
@@ -63,6 +63,15 @@ def expand(turns, prefixes):
 
 
 def judge_llm():
+    """Same judge for every provider under test, so scores are comparable. Default: Claude if a key is set."""
+    provider = os.getenv("JUDGE_PROVIDER") or ("anthropic" if os.getenv("ANTHROPIC_API_KEY") else "sarvam")
+    if provider == "anthropic":
+        from app.adapters.llm.anthropic import AnthropicLLM
+        llm = AnthropicLLM()
+        llm.model = os.getenv("JUDGE_MODEL", "claude-opus-5")
+        llm.effort = os.getenv("JUDGE_EFFORT", "medium")
+        llm.max_tokens = 8000
+        return llm
     llm = SarvamLLM()
     llm.model = os.getenv("JUDGE_MODEL", "sarvam-105b")
     llm.reasoning = os.getenv("JUDGE_REASONING", "low")
@@ -205,7 +214,9 @@ def source_documents(state):
                 results.append(f"### get_product_info {c['args']['product_id']} — {sec['topic']}\n"
                                f"{(sec.get('text') or 'NOT IN BROCHURE')[:4000]}")
         elif c["name"] == "get_savings_illustration" and c["ok"]:
-            ill = knowledge.intake_rules().savings_illustration(c["args"]["product_id"], int(c["args"]["annual_premium"]))
+            from app.agent.money import parse_amount
+            ill = knowledge.intake_rules().savings_illustration(c["args"]["product_id"],
+                                                                parse_amount(c["args"]["annual_premium"]))
             results.append(f"### get_savings_illustration {json.dumps(c['args'])}\n{json.dumps(ill, ensure_ascii=False)}")
         elif c["name"] in ("get_process_info", "compare_products", "get_claims_record") and c["ok"]:
             results.append(f"### {c['name']} {json.dumps(c['args'])} (ok)")
@@ -290,7 +301,9 @@ async def main(args):
 
     plain = [c for c in cases if not c.get("patch_purchase_urls")]
     patched = [c for c in cases if c.get("patch_purchase_urls")]
-    print(f"Running {len(cases)} cases with LLM={provider} (judge {jllm.model})", flush=True)
+    model = get_llm(args.llm).model
+    print(f"Running {len(cases)} cases with LLM={provider} ({model}), judge "
+          f"{'off' if args.no_judge else jllm.model}", flush=True)
     await asyncio.gather(*(one(c) for c in plain))
     if patched:  # cards are shared module state, so these run alone
         saved = {pid: c.get("purchase_url") for pid, c in knowledge.cards().items()}
@@ -328,7 +341,7 @@ async def main(args):
     print(f"metrics (summed per case; shared prefix turns counted in each): {tot}")
     RESULTS.mkdir(parents=True, exist_ok=True)
     out = RESULTS / f"{provider}-{STAMP}.json"
-    out.write_text(json.dumps({"provider": provider, "judge": jllm.model, "scorecard": avg, "metrics": tot,
+    out.write_text(json.dumps({"provider": provider, "model": model, "judge": None if args.no_judge else jllm.model, "scorecard": avg, "metrics": tot,
                                "results": results}, ensure_ascii=False, indent=1))
     print(f"results -> {out}")
     return all(r["pass"] for r in musts)

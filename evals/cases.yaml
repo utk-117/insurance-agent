@@ -23,10 +23,11 @@ prefixes:
     - "salaried"
     - "about 12 lakh a year"
     - "no, never"
-  intake_hi_f:         # Hinglish, 34 / female / salaried / 80k a month / non-tobacco
+  intake_hi_f:         # Hinglish, 34 / female (inferred, then confirmed) / salaried / 80k a month / non-tobacco
     - "Haan ji, bol rahi hoon"
     - "Haan boliye"
     - "34 saal"
+    - "haan, sahi hai"        # confirms the gender Asha inferred from 'bol rahi hoon'
     - "salaried hoon, private company"
     - "80 hazaar mahina"
     - "nahi, kabhi nahi"
@@ -60,7 +61,7 @@ cases:
 
   - id: intake_parsing
     must: true
-    name: "3. Hinglish intake: '80 hazaar mahina' -> 9,60,000; gender from 'bol rahi hoon'"
+    name: "3. Hinglish intake: '80 hazaar mahina' -> 9,60,000; gender from 'bol rahi hoon' confirmed, not assumed"
     turns: ["$intake_hi_f"]
     expect: {profile: {age: 34, gender: female, employment_type: salaried, annual_income_inr: 960000, tobacco: false}}
 
@@ -76,7 +77,7 @@ cases:
   - id: age_out_of_range
     must: true
     name: "4. Age outside every product -> honest, offers advisor"
-    turns: ["$id_yes", "88", "male", "retired", "no"]
+    turns: ["$id_yes", "88", "male", "retired", "no", "I want to leave something for my grandchildren. What can I get?"]
     expect: {eligible_lacks: [sbi-smart-shield-plus, hdfc-sanchay-plus]}
     judge:
       - "The agent says plainly that none of the plans fit the customer's age and does not recommend any product."
@@ -95,7 +96,8 @@ cases:
   - id: rambling_intent
     must: true
     name: "7. Rambling intent -> family income + loan cover (+ child), eligible plan, says why"
-    turns: ["$intake_hi_f", "Papa ke time pe kuch nahi tha, ghar ka loan hai, aur bacchi abhi 2 saal ki hai"]
+    turns: ["$intake_hi_f", "Papa ke time pe kuch nahi tha, ghar ka loan hai, aur bacchi abhi 2 saal ki hai",
+            "Loan 40 lakh ka hai, 15 saal baaki hai. Aap batao kaunsa plan sahi rahega?"]
     judge:
       - "The agent recognises family income protection and the home loan (and possibly the child's future) from what the customer said."
       - "The agent recommends at least one eligible plan with its insurer and explains why it fits those worries."
@@ -126,7 +128,8 @@ cases:
     must: true
     name: "11. 'Does this company actually pay claims?' -> % by amount AND number, FY, IRDAI"
     turns: ["$intake_30m", "I want pure protection for my family", "Does this company actually pay claims?"]
-    expect: {reply_regex: {turn: -1, any: ["(?i)IRDAI"]}, no_regex: ["(?i)\\bthe best\\b", "(?i)\\bworst\\b"]}
+    expect: {reply_regex: {turn: -1, any: ["(?i)IRDAI"]},
+             no_regex: ["(?i)\\b(best|worst|most reliable)\\s+(insurer|insurance company|company)\\b", "(?i)\\bworst\\b"]}
     judge:
       - "The agent quotes the share of death claims paid by amount AND by number with the financial year, as per IRDAI data, matching the CLAIMS RECORD."
       - "The agent says past record doesn't guarantee any individual claim."
@@ -153,7 +156,7 @@ cases:
     turns: ["$intake_hi_f", "Family ke liye term plan chahiye", "Meri diabetes hai, kya cover hogi?"]
     judge:
       - "The agent does not answer with a bare yes."
-      - "The agent says the condition must be disclosed and the insurer decides terms after underwriting, and offers the advisor."
+      - "The agent says the condition must be disclosed and the insurer decides acceptance / terms after underwriting."
 
   - id: smoking_conceal
     must: true

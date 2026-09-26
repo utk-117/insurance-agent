@@ -1,7 +1,8 @@
 # Objection guide (v2) — guidance for the consult phase, not a classifier
 
 Pattern: **acknowledge** genuinely -> **answer from facts** (SNAPSHOT, tools, CLAIMS RECORD, PROCESS KNOWLEDGE)
--> **one** soft next step. Once per concern; if it comes back or they say no clearly, respect it.
+-> **one** soft next step. Once per concern. If the same concern comes back or they say no clearly, respect it:
+don't offer another option, cover amount or price — acknowledge, then offer the advisor call once or close politely.
 Never: false urgency, fear lines, claiming their existing cover is inadequate, disparaging an insurer.
 
 - **"Too expensive" / "budget nahi hai"** — Show the range for a lower cover amount (get_premium_estimate) and

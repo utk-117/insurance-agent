@@ -294,9 +294,19 @@ def share_purchase_link(state, product_id):
             "next": "Tell them the official page is on their screen, then offer an advisor callback."}
 
 
+END_SIGNAL = re.compile(
+    r"\b(bye|goodbye|good night|cut (the )?call|end (the )?call|hang up|disconnect|stop (calling|this)|"
+    r"not interested|no thanks|no thank you|that'?s all|that is all|nothing else|leave it|don'?t call|"
+    r"call (band|kaat|cut)|phone rakh|rakhta hoon|rakhti hoon|baad mein|interested nahi|nahi chahiye|mat karo|"
+    r"bas itna|aur kuch nahi|wrong number|galat number)\b", re.I)
+
+
 def end_conversation(state, outcome, goodbye=None, summary=None):
     if state.phase == Phase.END:  # already ended this turn: no second log, no second goodbye
         return {"ended": True, "note": "already ended"}
+    if state.phase not in (Phase.WRAP_UP,) and not END_SIGNAL.search(_last_customer_text(state)):
+        return {"error": "Not ended: the customer hasn't asked to stop. Continue the conversation; call "
+                         "end_conversation only when they want to end, decline, or after the close is done."}
     # code decides what the outcome can be: a booked call or a shared link can't be downgraded by the model
     if state.callback_time:
         outcome = "purchase_link_and_callback" if state.purchase_link else "callback_scheduled"
