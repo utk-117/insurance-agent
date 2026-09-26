@@ -18,6 +18,8 @@ Goal: a working end-to-end demo, not polish. Every milestone below must be runna
   - `STT_PROVIDER` = `sarvam` (default) — Saaras/Saarika
   - `TTS_PROVIDER` = `sarvam` (default) — Bulbul
   - `LLM_PROVIDER` = `sarvam` (default) | `anthropic`; `LLM_MODEL` sets the model per provider
+    (Sarvam: `sarvam-105b-conversations`; Claude: `claude-haiku-4-5` by product-owner choice; `anthropic:<model>`
+    picks a model in the evals / bench)
   - Implement Sarvam for all three first. Add `anthropic` for LLM in M3. Other STT/TTS providers only if the
     human asks — the interface must make that a one-file addition.
   - Read https://docs.sarvam.ai for current model names, request formats, audio formats, language codes, and
@@ -105,7 +107,7 @@ sales conversation.
 
 ```
 PHASE 1  INTAKE (code-driven)   5 fixed questions -> profile_snapshot() -> eligible plans, max cover, price ranges
-PHASE 2  CONSULT (LLM-driven)   one open intent question, then a free conversation; the agent uses TOOLS
+PHASE 2  CONSULT (LLM-driven)   explain what life insurance is for + one intent question, then a free conversation; TOOLS
 PHASE 3  CLOSE (code-guarded)   callback (default) or purchase link; code validates + logs
 ```
 Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent to 2 minutes (as in v1).
@@ -117,18 +119,23 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
 - Code decides the next slot. The LLM call in this phase only (a) extracts any slots from the customer's words
   (several at once is fine; monthly income -> x12; lakh/crore; ranges -> midpoint) and (b) phrases the next
   question + a one-line acknowledgement. If the customer asks a question mid-intake, answer briefly, then
-  continue intake.
+  continue intake. Code checks that each intake reply asks the next slot (and not income / tobacco out of turn);
+  otherwise it asks the slot in the standard wording.
+- Gender is never assumed: only an explicit answer fills it. If Hindi verb forms ("bol raha / rahi hoon") or
+  "housewife" suggest it, Asha confirms ("I'm assuming you're male — could you confirm?"); the LLM's guess is ignored.
+- A clear "not interested" (code-detected phrases, even if the LLM labels it otherwise) gets one fixed soft-retry
+  line; the second one ends the call with a fixed goodbye.
 - When all slots are filled: `snapshot = intake_rules.profile_snapshot(profile)` (in `data/knowledge/intake_rules.py`
   — reference implementation, tested; move/import it into `app/agent/` as you see fit). The snapshot holds:
   eligible plans, excluded plans with reasons, **max cover** (25x income if age <= 35, else 20x; same for
   self-employed with income proof), and **indicative premium ranges** for each eligible term plan at ₹1 Cr and at
   max cover. Log it.
-- Transition line (LLM): one sentence summarising what they're eligible for (e.g. "You can get term cover of up
-  to about ₹3 crore"), then the open intent question.
+- Transition turn (LLM, `phases.md` CONSULT_OPEN): the snapshot headline ("You can get term cover of up to about
+  ₹3 crore"), one line on what life insurance is for (mainly a lump sum to the family on death; some plans also
+  cover a loan, return premiums or build savings for a goal), then one question on which of those they have in
+  mind. Never a bare "what would you like this insurance to do?".
 
 ### Phase 2 — Consult (non-deterministic; this is where the agent earns its keep)
-- Open question, natural language, e.g. "Tell me a bit about what you'd like this insurance to do for you and
-  your family." No option lists, no forced categories.
 - The customer can ramble, change topic, give several intents. The LLM infers the real intent(s) (family income
   replacement, loan cover, money back, guaranteed second income, child's education, retirement, legacy, tax,
   "my friend said…") and decides which **eligible** plans fit, why, and what to say next. `need_fit.json` is
@@ -136,21 +143,28 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
 - Selling points it may use, all via tools/snapshot, never invented: product benefits (cards/sections),
   **indicative premium range** (with disclaimer), **claims paid by amount and by number** (IRDAI), cover
   amount vs their max cover, salaried/female discounts where the brochure states them.
-- The agent drives toward a close (callback, or purchase link if the customer has decided), handles
-  objections conversationally (`prompts/objections.md` is guidance, not a classifier), and respects a no.
+- The agent drives toward a close, handles objections conversationally (`prompts/objections.md` is guidance, not
+  a classifier), and respects a no (after two refusals code blocks further price quotes).
+- When the customer wants to go ahead, **the agent itself explains the next steps** (proposal form on the insurer's
+  site, KYC, possible medical tests arranged by the insurer, the insurer's decision). The human advisor is for
+  doubts, and to help complete the purchase when the plan has no purchase page (SNAPSHOT marks `purchase_page`).
+- **Amounts are words, never raw integers** (`app/agent/money.py`): the snapshot, tool results and quoted ranges
+  say "₹20 crore", "₹8.61 lakh – ₹13.45 lakh a year"; tools take amounts in words and code parses them; the
+  amount the customer mentions is parsed by code into the prompt. (Sarvam misread raw integers by 10x.)
+- Ready "say" lines come from code for across-plan price ranges (pure term only) and the latest-FY claims record.
 
 **Tools** (one registry, `app/agent/tools.py`; each returns compact JSON with page/source refs):
 | tool | args | returns |
 |---|---|---|
 | `get_product_info` | product_id, topics[] (from the 16 section topics) | brochure wording + pages |
-| `get_premium_estimate` | product_id, sum_assured, [pay] | range, basis, disclaimer (`intake_rules.estimate_term_premium`) |
-| `get_savings_illustration` | product_id, annual_premium | brochure illustrations scaled (`intake_rules.savings_illustration`) |
+| `get_premium_estimate` | product_id, cover (words, e.g. "30 crore") | range in words, basis, disclaimer; code corrects a 10x/100x slip vs the customer's words |
+| `get_savings_illustration` | product_id, annual_premium (words) | brochure illustrations, scaled by code |
 | `get_claims_record` | insurer_slug | IRDAI FY23–FY25 paid % by amount + number |
 | `compare_products` | product_ids[2-3] | cards side by side + price ranges + claims records |
 | `get_process_info` | topic (medical_tests, claims, free_look, disclosure...) | buying_process.md / insurer.md excerpt |
 | `book_callback` | datetime_iso, product_ids[], note, customer_confirmed(bool) | code validates future IST time + confirmation; logs |
 | `share_purchase_link` | product_id | card event to UI (skipped if purchase_url is null) |
-| `end_conversation` | outcome, summary | logs outcome; moves to WRAP_UP |
+| `end_conversation` | outcome, goodbye, summary | only when the customer signals ending (or after a booking); the goodbye is spoken, no extra LLM call; a 2nd call is a no-op |
 
 **Tool calling per provider** (same registry, same prompt):
 - `anthropic`: native tool use. Max 2 tool rounds per customer turn, then the model must answer.
@@ -164,10 +178,15 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
   round takes > 1.5 s.
 
 ### Phase 3 — Close (code-guarded)
-- `book_callback` succeeds only if `customer_confirmed` is true, the time is in the future (IST) and within 14
-  days; otherwise the tool returns an error the model must act on (ask again / read back). Keep the existing
-  `parse_time_text` fallback and weekday calendar in context.
-- `share_purchase_link` only after the customer says they've decided; always offer a callback after.
+- `book_callback` succeeds only if `customer_confirmed` is true, the time is in the future (IST), within 14
+  days, **within advisor hours 9 AM–9 PM IST**, and the agent's previous reply read the day + time back; otherwise
+  the tool returns an error the model must act on. Re-booking the same slot is a no-op. Keep the existing
+  `parse_time_text` fallback and weekday calendar in context; code flags an out-of-hours time the customer names.
+- Asha mentions the 9 AM–9 PM hours when asking for a callback time.
+- **Never say the customer's phone number.** The number is not in anything the LLM sees; Asha asks them to confirm
+  "the number you're talking on" is right. Replies are redacted (phone-like digits -> "your number") as a safety net.
+- `share_purchase_link` only after the customer says they've decided, and only if the plan has a purchase page;
+  offer the advisor call for doubts after.
 - Every session ends with `log_outcome` (also on disconnect/timeout: `dropped`).
 
 ### What goes into each LLM call (v2)
@@ -250,7 +269,8 @@ Later (only after M5 works): barge-in (stop playback when user presses talk), st
   plus the **sales-quality scorecard** (below) scored by an LLM judge on every transcript;
   add `llm/anthropic.py`; `scripts/bench.py` comparing Sarvam vs Claude LLM. Target: all "must" cases pass.
 - **M4 Voice web UI**: push-to-talk loop in the browser, agent speaks first, transcript + state side panel.
-- **M5 Integrations**: Google Sheets, purchase link card, latency panel.
+- **M5 Integrations**: Google Sheets (share the Sheet with the Cloud Run service account; key file only for local
+  runs), purchase link card, latency panel.
 - **M6 Ship**: final Cloud Run deploy, README (setup + run), NOTES.md (approach, challenges, p50/p90 time to
   first audio, estimated cost per conversation-minute, production next steps: telephony, CRM, call recording, DNC checks).
 
@@ -309,10 +329,15 @@ no_pressure · respects_no. Report averages per LLM provider in NOTES.md.
   deploy on push to `main` (only after M5).
 - Secrets in Secret Manager / env vars: `SARVAM_API_KEY`, `ANTHROPIC_API_KEY`, `STT_PROVIDER`, `TTS_PROVIDER`,
   `LLM_PROVIDER`, `LLM_MODEL`,
-  `GOOGLE_SERVICE_ACCOUNT_JSON`, `SHEET_ID`, `ACCESS_CODE`, `BRAND_NAME`.
+  `GOOGLE_SERVICE_ACCOUNT_JSON` (optional: on Cloud Run the service's own identity is used), `SHEET_ID`,
+  `ACCESS_CODE`, `BRAND_NAME`.
 - Abuse / credit guards: `ACCESS_CODE` required to start a session; max 40 turns and 10 minutes per session;
   max 20 new sessions per hour globally; max 30 s audio per turn. Return a friendly message when a limit hits.
-- `GET /healthz` for health checks.
+- `GET /health` for health checks (`/healthz` also exists but Cloud Run's front end reserves paths ending in "z").
+- New-project setup done once: Artifact Registry repo `cloud-run-source-deploy` (asia-south1), `roles/run.builder`
+  for the default compute service account, secrets readable by it; the org policy blocks `allUsers`, so the
+  service is public via `--no-invoker-iam-check` (ACCESS_CODE guards it). Live:
+  https://insurance-voice-agent-877719973605.asia-south1.run.app
 
 ## Working agreements for Claude Code
 - Small commits per milestone. Don't start the next milestone until the current one runs.
