@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import csv
 import logging
+import os
 import pathlib
 import threading
 
@@ -11,7 +12,7 @@ log = logging.getLogger("sheets")
 COLUMNS = ["timestamp_ist", "session_id", "name", "phone", "age", "gender", "city", "goal", "dependents",
            "income_band", "primary_need", "shortlisted", "selected_insurer", "selected_product", "objections",
            "outcome", "callback_time_ist", "purchase_link", "price_asked", "summary", "turns", "avg_first_audio_ms"]
-CSV_PATH = pathlib.Path(__file__).resolve().parent.parent / "data" / "leads.csv"
+CSV_PATH = pathlib.Path(os.getenv("LEADS_CSV") or pathlib.Path(__file__).resolve().parent.parent / "data" / "leads.csv")
 _lock = threading.Lock()
 
 

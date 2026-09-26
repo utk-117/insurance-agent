@@ -57,6 +57,7 @@ class SessionState:
     price_asked: bool = False
     summary: Optional[str] = None
     transcript: list = field(default_factory=list)   # [{role, text, lang, ts}]
+    turn_log: list = field(default_factory=list)     # per turn: stage in/out, intent, loaded sections, llm_ms
     latencies: list = field(default_factory=list)    # [{stt_ms, llm_ms, tts_first_ms, total_first_audio_ms}]
     metrics: dict = field(default_factory=lambda: {"llm_calls": 0, "router_miss": 0, "objection_followup": 0,
                                                    "parse_fallbacks": 0, "input_tokens": 0, "output_tokens": 0,

@@ -3,27 +3,131 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Insurance voice agent</title>
+<title>Asha · Life insurance voice agent</title>
 <style>
-  body { font-family: system-ui, sans-serif; max-width: 640px; margin: 40px auto; padding: 0 16px; }
-  pre { background: #f4f4f4; padding: 12px; min-height: 80px; white-space: pre-wrap; }
+  :root {
+    --bg: #f6f5f1; --panel: #ffffff; --ink: #1d2027; --muted: #6b6f7a; --line: #e4e2dc;
+    --accent: #0f6e5f; --accent-ink: #ffffff; --accent-soft: #e3f1ee; --warn: #b4531f; --danger: #b3261e;
+    --agent: #eef3f2; --user: #f3efe6; --radius: 14px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #14161a; --panel: #1c1f24; --ink: #e8e6e1; --muted: #9a9ea8; --line: #2c3037;
+      --accent: #3fb59f; --accent-ink: #0d1411; --accent-soft: #1d2f2b; --warn: #e08a55; --danger: #ef7b72;
+      --agent: #1f2a28; --user: #2a2620;
+    }
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--ink);
+         font: 15px/1.5 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 18px; margin: 0; }
+  header span { color: var(--muted); font-size: 13px; }
+  main { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 20px; padding: 20px 24px; max-width: 1200px; margin: 0 auto; }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; padding: 16px; } header { padding: 14px 16px; } }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px; }
+  .card h2 { font-size: 13px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); margin: 0 0 12px; }
+  label { display: block; font-size: 13px; color: var(--muted); margin: 12px 0 4px; }
+  input { width: 100%; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg);
+          color: var(--ink); font: inherit; }
+  button { font: inherit; cursor: pointer; border-radius: 10px; border: 1px solid var(--line); background: var(--panel);
+           color: var(--ink); padding: 10px 14px; }
+  button.primary { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+  button:disabled { opacity: .5; cursor: not-allowed; }
+  .error { color: var(--danger); font-size: 14px; min-height: 20px; margin-top: 10px; }
+  #call { display: none; }
+  .status { display: flex; align-items: center; gap: 10px; font-size: 14px; color: var(--muted); min-height: 24px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--line); flex: none; }
+  .dot.speaking { background: var(--accent); animation: pulse 1s infinite; }
+  .dot.listening { background: var(--danger); animation: pulse .8s infinite; }
+  .dot.thinking { background: var(--warn); animation: pulse 1.4s infinite; }
+  @keyframes pulse { 50% { opacity: .35; } }
+  .talk-wrap { display: flex; flex-direction: column; align-items: center; gap: 10px; padding: 18px 0 8px; }
+  #talk { width: 132px; height: 132px; border-radius: 50%; border: 0; background: var(--accent); color: var(--accent-ink);
+          font-weight: 700; font-size: 15px; box-shadow: 0 6px 18px rgba(0,0,0,.12); user-select: none; touch-action: none; }
+  #talk.rec { background: var(--danger); transform: scale(1.05); }
+  .hint { font-size: 13px; color: var(--muted); text-align: center; }
+  .typed { display: flex; gap: 8px; margin-top: 14px; }
+  .typed input { flex: 1; }
+  #transcript { display: flex; flex-direction: column; gap: 8px; max-height: 52vh; overflow-y: auto; padding-right: 4px; }
+  .msg { padding: 10px 12px; border-radius: 12px; max-width: 88%; white-space: pre-wrap; }
+  .msg.agent { background: var(--agent); align-self: flex-start; }
+  .msg.user { background: var(--user); align-self: flex-end; }
+  .msg small { display: block; font-size: 11px; color: var(--muted); margin-bottom: 2px; }
+  .linkcard { border: 1px solid var(--accent); background: var(--accent-soft); border-radius: 12px; padding: 12px 14px; }
+  .linkcard a { color: var(--accent); font-weight: 600; word-break: break-all; }
+  .side { display: flex; flex-direction: column; gap: 16px; }
+  .stage { display: inline-block; background: var(--accent-soft); color: var(--accent); font-weight: 600; font-size: 12px;
+           padding: 3px 10px; border-radius: 999px; letter-spacing: .04em; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; margin: 12px 0 0; font-size: 14px; }
+  dt { color: var(--muted); } dd { margin: 0; word-break: break-word; }
+  ol { margin: 6px 0 0; padding-left: 20px; font-size: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; font-variant-numeric: tabular-nums; }
+  th, td { text-align: right; padding: 4px 6px; border-bottom: 1px solid var(--line); }
+  th:first-child, td:first-child { text-align: left; }
+  th { color: var(--muted); font-weight: 500; }
+  .ended { text-align: center; padding: 14px; border-radius: 12px; background: var(--accent-soft); margin-top: 12px; display: none; }
 </style>
 </head>
 <body>
-<h1>Insurance voice agent</h1>
-<p>M0 deploy check. The voice UI arrives in M4.</p>
-<button id="ping">Test WebSocket echo</button>
-<pre id="out"></pre>
-<script>
-  const out = document.getElementById('out');
-  fetch('/healthz').then(r => r.json()).then(j => out.textContent = 'healthz: ' + JSON.stringify(j) + '\n');
-  document.getElementById('ping').onclick = () => {
-    const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/ws/echo');
-    const t0 = performance.now();
-    ws.onopen = () => ws.send('hello ' + new Date().toISOString());
-    ws.onmessage = e => { out.textContent += 'echo: ' + e.data + ' (' + Math.round(performance.now() - t0) + ' ms)\n'; ws.close(); };
-    ws.onerror = () => out.textContent += 'websocket error\n';
-  };
-</script>
+<header><h1>Asha</h1><span>AI life-insurance assistant · voice demo</span></header>
+<main>
+  <section>
+    <div class="card" id="start">
+      <h2>Start a call</h2>
+      <form id="startForm">
+        <label for="name">Your name</label>
+        <input id="name" value="Utkarsh" autocomplete="name" required>
+        <label for="phone">Phone (for the advisor callback)</label>
+        <input id="phone" inputmode="tel" autocomplete="tel" placeholder="98xxxxxxxx" required>
+        <label for="code">Access code</label>
+        <input id="code" type="password" autocomplete="off" required>
+        <div style="margin-top:16px"><button class="primary" type="submit" id="startBtn">Start call</button></div>
+        <div class="error" id="startErr"></div>
+      </form>
+      <p class="hint" style="text-align:left;margin-top:14px">Asha speaks first. Hold the button (or the space bar) while you talk, release to send. English, Hindi or Hinglish.</p>
+    </div>
+
+    <div class="card" id="call">
+      <div class="status"><span class="dot" id="dot"></span><span id="statusText">Connecting…</span></div>
+      <div class="talk-wrap">
+        <button id="talk" disabled>Hold to talk</button>
+        <div class="hint" id="talkHint">Hold the button or the space bar</div>
+      </div>
+      <div id="linkCard"></div>
+      <div class="ended" id="ended"></div>
+      <div class="typed">
+        <input id="typed" placeholder="…or type a reply" autocomplete="off">
+        <button id="sendTyped">Send</button>
+        <button id="hangup">End</button>
+      </div>
+      <div class="error" id="callErr"></div>
+    </div>
+
+    <div class="card" style="margin-top:16px">
+      <h2>Transcript</h2>
+      <div id="transcript"></div>
+    </div>
+  </section>
+
+  <aside class="side">
+    <div class="card">
+      <h2>Conversation state</h2>
+      <span class="stage" id="stage">—</span>
+      <dl id="profile"></dl>
+      <div style="margin-top:12px;font-size:13px;color:var(--muted)">Shortlist</div>
+      <ol id="shortlist"><li style="color:var(--muted)">not yet</li></ol>
+    </div>
+    <div class="card">
+      <h2>Latency per turn (ms)</h2>
+      <table>
+        <thead><tr><th>#</th><th>STT</th><th>LLM</th><th>TTS 1st</th><th>1st audio</th></tr></thead>
+        <tbody id="lat"></tbody>
+      </table>
+      <div class="hint" style="text-align:left;margin-top:8px">1st audio = button release → first audio byte sent.</div>
+    </div>
+  </aside>
+</main>
+<script src="/static/app.js"></script>
 </body>
 </html>

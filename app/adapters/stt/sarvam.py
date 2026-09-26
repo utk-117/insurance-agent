@@ -29,7 +29,10 @@ class SarvamSTT:
         if self.model == "saaras:v3":
             data["mode"] = self.mode
         with timed() as t:
-            r = await self.client.post(URL, headers={"api-subscription-key": self.key}, data=data, files=files)
+            try:
+                r = await self.client.post(URL, headers={"api-subscription-key": self.key}, data=data, files=files)
+            except httpx.HTTPError as e:
+                raise ProviderError(f"sarvam {type(e).__name__}: {e}") from e
         log_call("stt", self.name, self.model, t["ms"], status=r.status_code, bytes=len(audio))
         if r.status_code != 200:
             raise ProviderError(f"sarvam stt {r.status_code}: {r.text[:300]}")

@@ -370,9 +370,29 @@ def is_no(out, text: str) -> bool:
     return out.intent == "confirm_no" or (out.intent in ("answered", "unclear") and bool(NO_RE.match(text or "")))
 
 
+FEMALE_FORMS = re.compile(r"\b(rahi|rehti|rahti|karti|chahti|sakti|gayi|jaati|leti|deti|sochti|hoti) (hoon|hun|hu)\b", re.I)
+MALE_FORMS = re.compile(r"\b(raha|rehta|rahta|karta|chahta|sakta|gaya|jaata|leta|deta|sochta|hota) (hoon|hun|hu)\b", re.I)
+
+
+def infer_gender(state: SessionState):
+    """Hindi first-person verb endings reveal gender ("bol rahi hoon"); saves an awkward question."""
+    if state.profile.get("gender"):
+        return None
+    for t in state.transcript:
+        if t["role"] == "user":
+            if FEMALE_FORMS.search(t["text"]):
+                return "female"
+            if MALE_FORMS.search(t["text"]):
+                return "male"
+    return None
+
+
 def apply_extracted(state: SessionState, ex: Extracted) -> dict:
     """Write cleaned values into state.profile; returns {field: new_value} for what changed."""
     p, changed = state.profile, {}
+    g = infer_gender(state)
+    if g:
+        p["gender"] = changed["gender"] = g
     cleaners = {"goal": norm_goal, "income_band": norm_income, "dependents": norm_dependents,
                 "gender": norm_gender, "preferred_insurer": knowledge.match_insurer,
                 "primary_need": lambda v: v if v in knowledge.need_fit()["needs"] else None}
@@ -810,6 +830,12 @@ async def handle_turn(state: SessionState, text: str, lang: str | None = None) -
 
     state.add("agent", reply, reply_lang)
     state.latencies.append({"llm_ms": llm_ms})
+    state.turn_log.append({"stage_in": stage_in.value, "stage_out": state.stage.value,
+                           "intent": out.intent if out else None,
+                           "objection_type": out.objection_type if out else None,
+                           "sections": route["products"], "claims_fallback": route["claims_fallback"],
+                           "extra_topics": route.get("extra_topics", []), "llm_ms": llm_ms,
+                           "fallback": out is None})
     ended = state.stage == Stage.END
     if ended:
         await finish(state)

@@ -35,7 +35,7 @@ class SarvamLLM:
         # "none" sends reasoning_effort: null, which disables reasoning (lowest latency for voice)
         self.reasoning = os.getenv("SARVAM_REASONING_EFFORT", "none")
         self.max_tokens = int(os.getenv("SARVAM_MAX_TOKENS", "1024"))
-        self.client = httpx.AsyncClient(timeout=60)
+        self.client = httpx.AsyncClient(timeout=float(os.getenv("SARVAM_LLM_TIMEOUT", "30")))
 
     def _body(self, msgs, schema):
         body = {"model": self.model, "messages": msgs, "temperature": 0.2, "max_tokens": self.max_tokens,
@@ -49,15 +49,18 @@ class SarvamLLM:
 
     async def _call(self, msgs, schema):
         with timed() as t:
-            r = await self.client.post(URL, headers={"api-subscription-key": self.key},
-                                       json=self._body(msgs, schema))
+            try:
+                r = await self.client.post(URL, headers={"api-subscription-key": self.key},
+                                           json=self._body(msgs, schema))
+            except httpx.HTTPError as e:
+                raise ProviderError(f"sarvam {type(e).__name__}: {e}") from e
         if r.status_code != 200:
             log_call("llm", self.name, self.model, t["ms"], status=r.status_code)
             raise ProviderError(f"sarvam llm {r.status_code}: {r.text[:300]}")
         j = r.json()
         usage = j.get("usage") or {}
         content = (j["choices"][0]["message"].get("content") or "")
-        log_call("llm", self.name, self.model, t["ms"], status=200,
+        log_call("llm", self.name, self.model, t["ms"], status=200, finish=j["choices"][0].get("finish_reason"),
                  input_tokens=usage.get("prompt_tokens"), output_tokens=usage.get("completion_tokens"))
         return content, t["ms"], usage.get("prompt_tokens", 0) or 0, usage.get("completion_tokens", 0) or 0
 

@@ -6,3 +6,4 @@ __pycache__/
 data/leads.csv
 data/bench/
 data/transcripts/
+evals/results/

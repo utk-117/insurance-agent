@@ -30,7 +30,10 @@ class SarvamTTS:
         body = {"text": text, "language_code": lang, "model": self.model, "speaker": self.speaker,
                 "pace": self.pace, "speech_sample_rate": self.sample_rate, "output_audio_codec": self.codec}
         with timed() as t:
-            r = await self.client.post(URL, headers={"api-subscription-key": self.key}, json=body)
+            try:
+                r = await self.client.post(URL, headers={"api-subscription-key": self.key}, json=body)
+            except httpx.HTTPError as e:
+                raise ProviderError(f"sarvam {type(e).__name__}: {e}") from e
         log_call("tts", self.name, self.model, t["ms"], status=r.status_code, chars=len(text), lang=lang)
         if r.status_code != 200:
             raise ProviderError(f"sarvam tts {r.status_code}: {r.text[:300]}")
