@@ -120,7 +120,9 @@ def text_language(text: str) -> str:
 
 
 def customer_language(state: SessionState) -> str:
-    last = next((t for t in reversed(state.transcript) if t["role"] == "user"), None)
+    """Language of the customer's last real sentence (a bare "36" or "male" doesn't switch it)."""
+    users = [t for t in state.transcript if t["role"] == "user"]
+    last = next((t for t in reversed(users) if len(t["text"].split()) >= 2), users[-1] if users else None)
     if not last:
         return "unknown"
     lang = text_language(last["text"])
@@ -198,7 +200,8 @@ def _intake_text(state: SessionState, parsed: dict) -> str:
                    known=json.dumps({k: v for k, v in p.items() if v is not None}) or "{}",
                    parsed=json.dumps(parsed) if parsed else "nothing",
                    missing=", ".join(intake.missing(p)) or "none",
-                   next_slot=nxt or "none (intake complete)", ask_en=q["ask_en"], ask_hi=q["ask_hi"])
+                   next_slot=nxt or "none (intake complete)",
+                   ask=q["ask_en"] if customer_language(state) in ("English", "unknown") else q["ask_hi"])
 
 
 def _prefetch_text(state: SessionState, text: str) -> str:
@@ -372,6 +375,11 @@ def _finish_intake(state: SessionState):
 
 async def _intake_turn(state: SessionState, text: str, on_tool_round=None) -> tuple:
     parsed = _apply_slots(state, intake.parse_turn(text, state.profile))
+    if state.profile.get("gender") is None:  # "bol raha hoon" during the identity check counts too
+        g = next((intake.parse_gender(t["text"], False) for t in state.transcript
+                  if t["role"] == "user" and intake.parse_gender(t["text"], False)), None)
+        if g:
+            parsed.update(_apply_slots(state, {"gender": g}))
     if not intake.missing(state.profile):
         _finish_intake(state)
         return await _consult_turn(state, text, on_tool_round)

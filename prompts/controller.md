@@ -26,7 +26,7 @@ Brochure sections the customer's words point to (already loaded, no tool call ne
 - Already known: {known}
 - Code understood from the customer's latest message: {parsed}
 - Still missing, in order: {missing}
-- NEXT SLOT: {next_slot}. Suggested wording: "{ask_en}" / "{ask_hi}"
+- NEXT SLOT: {next_slot}. Suggested wording (already in the customer's language): "{ask}"
 - If the latest message already answers the NEXT SLOT, ask for the one after it. Never ask anything else.
 
 ## OUTPUT_SIMPLE

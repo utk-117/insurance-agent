@@ -185,6 +185,24 @@ class TestFlow(Base):
         self.assertEqual(s.metrics["tool_rounds"], 2)
 
 
+class TestIntakeMemory(Base):
+    def test_gender_from_identity_turn_is_not_asked_again(self):
+        fake = FakeLLM(json_replies=[{"reply": "Salaried hain ya self-employed?", "reply_language": "hi-IN",
+                                      "extracted": {}, "intent": "answered"}])
+
+        async def convo():
+            s = c.new_session("Rahul", "9876543210")
+            s.add("agent", "Kya main Rahul se baat kar rahi hoon?")
+            s.add("user", "Haan ji, bol raha hoon")
+            s.phase = Phase.INTAKE
+            await c.handle_turn(s, "36")
+            return s
+
+        s = self.run_with(fake, convo())
+        self.assertEqual((s.profile["age"], s.profile["gender"]), (36, "male"))
+        self.assertIn("NEXT SLOT: employment_type", sys_text(fake.systems[-1]))
+
+
 class TestEnding(Base):
     def test_cut_the_call_is_one_llm_call(self):
         # live bug: "cut the call" -> end_conversation, end_conversation again, then a 3rd call for the words
