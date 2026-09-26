@@ -1,0 +1,44 @@
+{
+  "_meta": {
+    "purpose": "Deterministic intake rules: what the 5 intake answers imply for eligibility, maximum cover and pricing inputs. Applied in code (knowledge.profile_snapshot); the LLM only reads the result.",
+    "status": "Business assumptions set by the product owner, not insurer underwriting policy. The agent always says cover limits are indicative and final cover is decided by the insurer.",
+    "decided_by": "Utkarsh, 26 Sep 2026"
+  },
+
+  "intake_questions": [
+    {"slot": "age", "type": "int", "valid": [0, 85], "ask_en": "May I know your age?", "ask_hi": "Aapki umar kitni hai?"},
+    {"slot": "gender", "type": "enum", "values": ["male", "female", "other"], "ask_en": "And may I note your gender, for the premium estimate?", "ask_hi": "Premium estimate ke liye, aap male hain ya female?", "infer_ok": "May be taken from clear Hindi verb/pronoun forms ('bol rahi hoon'); confirm lightly if unsure."},
+    {"slot": "employment_type", "type": "enum", "values": ["salaried", "self_employed", "not_working"], "ask_en": "Are you salaried, self-employed, or not working at the moment?", "ask_hi": "Aap salaried hain, self-employed hain, ya abhi kaam nahi kar rahe?", "map_hints": {"not_working": ["homemaker", "housewife", "student", "retired", "unemployed", "between jobs"]}},
+    {"slot": "annual_income_inr", "type": "int", "ask_en": "Roughly what is your yearly income? A range is fine.", "ask_hi": "Aapki saalana income lagbhag kitni hai? Range bhi chalega.", "parse_note": "Accept monthly figures ('80 hazaar mahina' -> 9,60,000/yr), lakh/crore words and ranges (use the midpoint). Skip if not_working."},
+    {"slot": "tobacco", "type": "bool", "ask_en": "Have you used any tobacco or nicotine in the last 12 months, even occasionally?", "ask_hi": "Pichhle 12 mahine mein kabhi bhi tobacco, cigarette, gutka ya nicotine liya hai?", "note": "Insurers price and test for this (cotinine test), so honesty helps the customer."}
+  ],
+
+  "max_cover": {
+    "rule": "income_multiple x annual_income_inr, for salaried and self_employed alike",
+    "income_multiple_by_age": [
+      {"age_max": 35, "multiple": 25},
+      {"age_max": 200, "multiple": 20}
+    ],
+    "multiple_note": "25x up to age 35, 20x above 35 (per product owner). CONFIRM the >35 band; no further step-down is applied at older ages.",
+    "self_employed_note": "Same multiples, but the insurer will ask for income proof (typically ITRs); mention it when relevant.",
+    "not_working": "No term cover on their own life from these 10 products (none of the brochures offers cover to non-earners). See not_working_options.",
+    "product_caps": "Final max for a product = min(income-based max, product max sum assured if any). If the product's min sum assured > income-based max, the product is not feasible for this customer.",
+    "rounding": "Round down to the nearest Rs 5 lakh below Rs 1 crore, nearest Rs 25 lakh above."
+  },
+
+  "not_working_options": [
+    {"option": "Spouse cover under the earning partner's term plan", "products": ["sbi-smart-shield-plus (Better Half Benefit)", "hdfc-c2p-supreme (spouse cover add-on)"], "source": "cards.json key_benefits / sections optional_benefits"},
+    {"option": "Savings plans (premium affordability decided with the advisor)", "products": ["hdfc-sanchay-plus", "sbi-smart-platina-plus", "icici-gift-pro", "sbi-smart-bachat-plus", "hdfc-sanchay-par-advantage"]},
+    {"option": "Advisor callback to explore further", "products": []}
+  ],
+
+  "gates": {
+    "icici-assured-savings": {"rule": "annual_income_inr >= 10000000", "reason": "Minimum annual premium is Rs 20 lakh; ASSUMPTION: only pitch when that is <= 20% of income. Never say the figure as a price unless asked."}
+  },
+
+  "pricing_inputs": {
+    "from_intake": ["age", "gender", "tobacco", "employment_type"],
+    "salaried_discount": "Apply the product's stated first-year salaried discount (pricing.json) and say it applies to the first year only.",
+    "default_quote_points": "Quote each eligible term plan at Rs 1 crore (if <= max cover) and at the customer's max cover, regular pay, policy term to age 60 or the anchor's term, whichever the product allows."
+  }
+}

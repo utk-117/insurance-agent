@@ -53,8 +53,6 @@ for pid, m in need_fit["products"].items():
         errors.append(f"need_fit: unknown product {pid}")
         continue
     for need, feats in m.items():
-        if need in ("gate", "soft_gate"):
-            continue
         if need not in needs:
             errors.append(f"need_fit: {pid} uses unknown need '{need}'")
         for f in feats:
@@ -73,6 +71,21 @@ for t in list(router["keywords"]) + router["core_topics"]:
 for pid in router["product_aliases"]:
     if pid not in cards:
         errors.append(f"topic_router: alias for unknown product {pid}")
+
+# pricing / underwriting rules
+pricing = load("pricing.json")
+uw = load("underwriting_rules.json")
+for pid, pr in pricing["products"].items():
+    if pid not in cards:
+        errors.append(f"pricing: unknown product {pid}")
+    elif cards[pid]["plan_type"] in ("term", "term_return_of_premium") and not pr.get("anchors"):
+        errors.append(f"pricing: term product {pid} has no anchors")
+for pid in cards:
+    if pid not in pricing["products"]:
+        errors.append(f"pricing: product {pid} missing")
+for pid in uw["gates"]:
+    if pid not in cards:
+        errors.append(f"underwriting_rules gate for unknown product {pid}")
 
 if errors:
     print("\n".join("ERROR: " + e for e in errors))

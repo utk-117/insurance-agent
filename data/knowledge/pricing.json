@@ -1,0 +1,125 @@
+{
+  "_meta": {
+    "purpose": "Indicative premium ranges (term plans) and indicative benefits per premium (savings plans), built from the worked examples printed in each official brochure. Used by the premium tools; the LLM never computes prices itself.",
+    "source": "Brochure illustrations (page numbers per anchor). Premiums exclude taxes; individual life policies are GST-exempt w.e.f. 22 Sep 2025 per the SBI brochures.",
+    "status": "INDICATIVE. Anchors are exact brochure figures; everything in 'model' is a labelled assumption, not insurer rates.",
+    "spoken_disclaimer_en": "This is an indicative range based on the insurer's own brochure examples, not a quote. The final premium is set by the insurer after underwriting.",
+    "spoken_disclaimer_hi": "Ye sirf ek andaaza hai, insurer ke brochure ke examples ke basis par. Final premium insurer underwriting ke baad hi batayega."
+  },
+
+  "term_model": {
+    "method": "est = anchor_premium x (SA / anchor_SA) x exp(age_k x (age - anchor_age)) x tobacco_factor x gender_factor; range = [est x range_low, est x range_high], rounded to nearest 500. Use the product's anchor closest in age with the same pay type; quote regular pay only (limited/single pay -> advisor).",
+    "age_k": 0.07,
+    "age_k_note": "ASSUMPTION: ~7% higher premium per year of entry age, typical of Indian term pricing; not from brochures.",
+    "tobacco_factor": 1.6,
+    "tobacco_note": "ASSUMPTION: tobacco users typically pay ~50-80% more; brochures only say non-tobacco users get special rates.",
+    "gender_factor_female_default": 0.85,
+    "gender_note": "Use the product's stated female discount where the brochure gives one; otherwise ASSUMPTION 0.85.",
+    "range_low": 0.8,
+    "range_high": 1.25,
+    "round_to": 500,
+    "anchor_sa_note": "Anchors at 1 Cr are preferred; scaling far from the anchor SA (e.g. 25 lakh) adds error, so widen to [0.75, 1.35] below 50 lakh."
+  },
+
+  "products": {
+    "sbi-smart-shield-plus": {
+      "kind": "term",
+      "gender_factor_female": null,
+      "gender_note": "Brochure: 'lower rates for women' (no % stated) -> use default 0.85",
+      "salaried_discount": null,
+      "anchors": [
+        {"age": 30, "gender": "male", "tobacco": false, "option": "level_cover", "sa": 10000000, "policy_term": 45, "pay": "regular", "annual_premium": 14088, "page": 14},
+        {"age": 35, "gender": "male", "tobacco": false, "option": "increasing_cover", "sa": 15000000, "policy_term": 30, "pay": "regular", "annual_premium": 34860, "page": 15},
+        {"age": 38, "gender": "male", "tobacco": false, "option": "level_cover", "sa": 10000000, "policy_term": 27, "pay": "regular", "annual_premium": 18465, "page": 17},
+        {"age": 40, "gender": "male", "tobacco": false, "option": "level_cover", "sa": 20000000, "policy_term": 30, "pay": "limited_25", "annual_premium": 43860, "page": 16},
+        {"age": 40, "gender": "female", "tobacco": false, "option": "level_cover", "sa": 10000000, "policy_term": 35, "pay": "limited_15", "annual_premium": 36690, "page": 18},
+        {"age": 45, "gender": "female", "tobacco": false, "option": "level_cover_whole_life", "sa": 20000000, "policy_term": 55, "pay": "limited_25", "annual_premium": 125118, "page": 19}
+      ],
+      "addon_anchors": [
+        {"name": "Better Half Benefit (spouse cover)", "spouse_age": 30, "sa": 2500000, "annual_premium": 811, "page": 16},
+        {"name": "Accident Benefit Rider - APPD", "age": 38, "sa": 10000000, "annual_premium": 3400, "page": 17},
+        {"name": "Accident Benefit Rider - ADB", "age": 40, "sa": 20000000, "annual_premium": 15400, "page": 18}
+      ]
+    },
+    "sbi-smart-swadhan-supreme": {
+      "kind": "term_return_of_premium",
+      "gender_factor_female": null,
+      "salaried_discount": null,
+      "anchors": [
+        {"age": 30, "gender": "female", "tobacco": null, "option": null, "sa": 10000000, "policy_term": 30, "pay": "regular", "annual_premium": 22284, "page": 3},
+        {"age": 45, "gender": "male", "tobacco": null, "option": null, "sa": 5000000, "policy_term": 30, "pay": "limited_15", "annual_premium": 57159, "page": 4}
+      ],
+      "notes": ["Return of premium: 100% of premiums paid comes back at maturity (p3-4, e.g. Rs 6,68,520 on Rs 22,284 x 30)", "Min annual premium Rs 6,000 (p7)", "tobacco status not stated in the brochure examples"]
+    },
+    "icici-iprotect-smart-plus": {
+      "kind": "term",
+      "gender_factor_female": null,
+      "salaried_discount": {"first_year_only": true, "regular": 0.125, "limited": 0.15, "single": 0.0, "page": 22},
+      "anchors": [
+        {"age": 32, "gender": "female", "tobacco": null, "option": "life_plus (includes 1 Cr accidental death cover)", "sa": 10000000, "policy_term": 30, "pay": "regular", "channel": "online", "annual_premium": 16799, "page": 14},
+        {"age": 35, "gender": "male", "tobacco": false, "option": "life_plus (includes 1 Cr accidental death cover)", "sa": 10000000, "policy_term": 30, "pay": "limited_10", "annual_premium": 44664, "page": 19}
+      ],
+      "notes": ["Both anchors are the Life Plus variant (adds accidental death cover); the plain Life variant should cost somewhat less - say so."]
+    },
+    "hdfc-c2p-supreme": {
+      "kind": "term",
+      "gender_factor_female": 0.85,
+      "gender_note": "Brochure p1: 15% discount on base premium rates for female lives",
+      "salaried_discount": {"first_year_only": true, "regular": 0.10, "limited": 0.10, "single": 0.0, "page": 1},
+      "anchors": [
+        {"age": 35, "gender": "male", "tobacco": null, "option": "life_option_A_level", "sa": 10000000, "policy_term": 40, "pay": "regular", "annual_premium": 20892, "page": 3}
+      ]
+    },
+
+    "hdfc-sanchay-plus": {
+      "kind": "savings_guaranteed",
+      "illustrations": [
+        {"option": "guaranteed_maturity", "age": 30, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 20, "benefit": "Rs 25,32,440 lump sum at maturity (guaranteed)", "page": 13},
+        {"option": "guaranteed_income", "age": 30, "gender": "male", "annual_premium": 100000, "ppt": 12, "policy_term": 13, "benefit": "Rs 2,01,750 a year from year 14 to 25 (12 years, guaranteed)", "page": 13},
+        {"option": "long_term_income", "age": 30, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 11, "benefit": "Rs 97,750 a year from year 12 to 36 (25 years) + Rs 10,00,000 at the end (guaranteed)", "page": 13},
+        {"option": "life_long_income", "age": 50, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 11, "benefit": "Rs 79,750 a year from year 12 till age 99 + Rs 10,00,000 at the end (guaranteed)", "page": 13}
+      ],
+      "min_annual_premium": 30000
+    },
+    "sbi-smart-platina-plus": {
+      "kind": "savings_guaranteed",
+      "illustrations": [
+        {"option": "life_income", "age": 35, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 26, "benefit": "Rs 93,460 a year for 15 years + 110% of premiums (Rs 11,00,000) at the end (guaranteed)", "page": 5},
+        {"option": "guaranteed_income", "age": 35, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 26, "benefit": "Rs 90,720 a year for 15 years + Rs 11,00,000 at the end; income continues to nominee after death (guaranteed)", "page": 6}
+      ]
+    },
+    "icici-gift-pro": {
+      "kind": "savings_guaranteed",
+      "illustrations": [
+        {"option": "level_guaranteed_income, 100% MoneyBack", "age": 35, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 11, "benefit": "Rs 98,750 a year for 30 years (years 12-41) + Rs 10,00,000 at the end; total Rs 39,62,500 (guaranteed)", "page": 12},
+        {"option": "level_guaranteed_income, 0% MoneyBack", "age": 35, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 11, "benefit": "Rs 1,07,650 a year for 30 years, no lump sum (guaranteed)", "page": 12},
+        {"option": "increasing_guaranteed_income, 100% MoneyBack", "age": 35, "gender": "male", "annual_premium": 100000, "ppt": 10, "policy_term": 11, "benefit": "Starts at Rs 67,720 a year rising 5% simple each year to Rs 1,65,914, + Rs 10,00,000 at the end; total Rs 45,04,510 (guaranteed)", "page": 13}
+      ]
+    },
+    "icici-assured-savings": {
+      "kind": "savings_guaranteed",
+      "illustrations": [
+        {"option": null, "age": 30, "gender": null, "annual_premium": 2000000, "ppt": 7, "policy_term": 15, "benefit": "Rs 2,90,24,200 at maturity (Rs 1,68,00,000 guaranteed additions + Rs 1,22,24,200 guaranteed maturity benefit) on Rs 1,40,00,000 paid", "page": 10}
+      ],
+      "notes": ["Brochure dated FY2023-24; confirm current version", "Minimum annual premium Rs 20 lakh"]
+    },
+    "sbi-smart-bachat-plus": {
+      "kind": "savings_participating",
+      "illustrations": [
+        {"option": "life", "age": 30, "gender": "male", "annual_premium": 100000, "ppt": 30, "policy_term": 30, "benefit": "Maturity Rs 39,01,167 if the insurer earns 4% a year, Rs 82,73,929 at 8% a year - NOT guaranteed, bonuses if declared; sum assured Rs 30,57,341", "page": 6}
+      ]
+    },
+    "hdfc-sanchay-par-advantage": {
+      "kind": "savings_participating",
+      "illustrations": [
+        {"option": "immediate_income", "age": 30, "gender": "male", "annual_premium": 100000, "ppt": 8, "policy_term": 70, "benefit": "Yearly cash bonus Rs 13,195 at 4% / Rs 27,300 at 8% (not guaranteed); maturity at 100: Rs 18,31,000 at 4% / Rs 1,67,34,000 at 8% (not guaranteed beyond Rs 8,00,000 sum assured on maturity)", "page": 5},
+        {"option": "deferred_income", "age": 30, "gender": "male", "annual_premium": 100000, "ppt": 8, "policy_term": 70, "benefit": "Guaranteed income Rs 28,400 a year for 25 years after premiums end, plus cash bonus (not guaranteed); maturity Rs 23,22,000 at 4% / Rs 61,60,000 at 8%", "page": 8}
+      ]
+    }
+  },
+
+  "savings_model": {
+    "method": "Scale the illustration benefit linearly with the customer's chosen annual premium (benefit x premium / illustration premium). Always say the illustration age and that the actual figure depends on age, term and option. For participating plans, always give both 4% and 8% and say bonuses are not guaranteed.",
+    "note": "ASSUMPTION: linear scaling ignores age and high-premium enhancements; fine for an indicative conversation."
+  }
+}

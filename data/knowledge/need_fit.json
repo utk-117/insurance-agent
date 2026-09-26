@@ -1,12 +1,11 @@
 {
   "_meta": {
-    "purpose": "Maps customer needs (from discovery) to the specific product features that serve them, so the pitch is need -> benefit, not a feature dump. Used by the shortlister (ranking) and the LLM (pitch wording).",
+    "purpose": "Reference knowledge for the consult phase: which product features serve which customer intent. The agent infers intent freely from conversation; this is a lookup, not a script.",
     "source": "Derived only from cards.json key_benefits / pitch_line / ideal_for (which quote the official brochures). 'topic' points to sections/<product_id>.json for the exact wording to load when the customer asks for detail.",
     "rules": [
       "Pitch a feature only if it appears here or in the product's card/sections.",
       "Say 'if declared' / 'not guaranteed' whenever a feature is marked guaranteed=false.",
-      "'gate' conditions are applied in code before shortlisting; never speak the gate figure as a price.",
-      "'soft_gate' conditions only lower the ranking; they never exclude a product."
+      "Gates and cover feasibility live in underwriting_rules.json and are applied in code (intake_rules.py)."
     ]
   },
   "needs": {
@@ -176,12 +175,6 @@
       ]
     },
     "icici-iprotect-smart-plus": {
-      "soft_gate": {
-        "income_band": [
-          "<5L"
-        ],
-        "reason": "minimum sum assured is ₹50 lakh per the card; rank lower for the lowest income band and let the advisor judge. Never say this as a price."
-      },
       "family_income_protection": [
         {
           "feature": "Large term cover (₹50 lakh and above), up to age 85 or whole life to 99",
@@ -248,12 +241,6 @@
       ]
     },
     "icici-assured-savings": {
-      "gate": {
-        "income_band": [
-          "25L+"
-        ],
-        "reason": "eligibility floor in the brochure; never say the figure as a price"
-      },
       "lump_sum_goal": [
         {
           "feature": "Guaranteed Additions every year of 9-11% of premiums paid, plus a guaranteed lump sum at maturity",

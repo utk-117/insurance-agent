@@ -69,3 +69,13 @@ The build scripts are `specs/<id>.py` (card, eligibility rows, section anchors),
 
 `eligibility.py` now maps discovery goals `child_future` and `retirement` to `savings_protection` (`GOAL_ALIASES`).
 After running `build/build.py`, always run `python check_integrity.py`.
+
+## v2 additions (intake -> consult redesign)
+| File | Purpose |
+|---|---|
+| `underwriting_rules.json` | The 5 intake questions (wording EN/HI), max cover rule (25x income if age <= 35, 20x above; self-employed same with income proof), options for people not working, product gates |
+| `pricing.json` | Exact premium / benefit examples from each brochure (with page numbers) + a labelled estimation model (age, tobacco, gender factors, +/- range). Indicative only. |
+| `intake_rules.py` | `max_cover()`, `estimate_term_premium()`, `savings_illustration()`, `profile_snapshot()`; run it to see 3 sample profiles |
+
+Gates moved from `need_fit.json` to `underwriting_rules.json`; iProtect's old soft gate is replaced by the
+min-cover vs max-cover feasibility check in `profile_snapshot()`.
