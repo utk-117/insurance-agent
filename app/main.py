@@ -102,6 +102,7 @@ async def finalize(s: Session, reason: str):
         await controller.finish(s.state)
     except Exception:
         log.exception("finish failed")
+    await asyncio.to_thread(sheets.flush, 10.0)  # finish the Sheet write while the request still has CPU
     # full record to logs (Cloud Logging) - transcripts on Cloud Run's disk don't survive restarts
     log.info(json.dumps({"event": "session_end", "reason": reason, "session": s.state.session_id,
                          "state": s.state.to_dict()}, ensure_ascii=False, default=str))
@@ -210,6 +211,7 @@ async def ws_session(ws: WebSocket, session_id: str):
                     await send({"type": "error", "message": "Sorry, the speech service had a hiccup. Please try again."})
                 if s.state.stage.value == "END":
                     s.finished = True  # controller.finish already logged the lead row
+                    await asyncio.to_thread(sheets.flush, 10.0)
                     log.info(json.dumps({"event": "session_end", "reason": "completed",
                                          "session": s.state.session_id, "state": s.state.to_dict()},
                                         ensure_ascii=False, default=str))

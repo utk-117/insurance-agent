@@ -68,6 +68,16 @@ class TestSheets(unittest.TestCase):
         self.assertEqual(sheets.STATUS["sheets_errors"], before + 1)
         self.assertIn("not shared", sheets.STATUS["last_error"])
 
+    def test_flush_waits_for_pending_writes(self):
+        import threading
+        done = []
+        t = threading.Thread(target=lambda: done.append(1))
+        sheets._pending.append(t)
+        t.start()
+        sheets.flush(2)
+        self.assertEqual(done, [1])
+        self.assertEqual(sheets._pending, [])
+
     def test_no_sheet_id_means_csv_only(self):
         tmp = pathlib.Path(tempfile.mkdtemp()) / "leads.csv"
         with mock.patch.dict("os.environ", {"SHEET_ID": ""}):

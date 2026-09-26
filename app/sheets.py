@@ -26,6 +26,7 @@ _sheet_lock = threading.Lock()
 SCOPES = ["https://www.googleapis.com/auth/spreadsheets"]
 TAB = "leads"
 _ws = None
+_pending: list = []  # sheet-write threads not yet finished (see flush)
 STATUS = {"sheets_writes": 0, "sheets_errors": 0, "last_error": None}
 
 
@@ -56,7 +57,9 @@ def upsert(row: dict, path: pathlib.Path | None = None):
             w.writerows(rows)
     log.info("lead row upserted to %s (session %s, outcome %s)", path, row["session_id"], row["outcome"])
     if sheet_id():
-        threading.Thread(target=_sheet_upsert_safe, args=(dict(row),), daemon=True).start()
+        t = threading.Thread(target=_sheet_upsert_safe, args=(dict(row),), daemon=True)
+        t.start()
+        _pending.append(t)
         return f"sheet:{sheet_id()} + {path}"
     return str(path)
 
@@ -125,6 +128,16 @@ def _sheet_upsert_safe(row: dict, attempts: int = 3):
                 log.warning("sheets write failed (attempt %d/%d): %s", i + 1, attempts, STATUS["last_error"])
                 time.sleep(1.5 * (i + 1))
         STATUS["sheets_errors"] += 1
+
+
+def flush(timeout: float = 10.0):
+    """Wait for pending sheet writes. Called before a call's connection closes: on Cloud Run the CPU is throttled
+    once no request is open, so a background write that outlives the WebSocket would stall."""
+    import time
+    deadline = time.monotonic() + timeout
+    while _pending:
+        t = _pending.pop(0)
+        t.join(max(0.0, deadline - time.monotonic()))
 
 
 def status() -> dict:
