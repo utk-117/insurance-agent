@@ -9,20 +9,27 @@ import threading
 
 log = logging.getLogger("sheets")
 
-COLUMNS = ["timestamp_ist", "session_id", "name", "phone", "age", "gender", "city", "goal", "dependents",
-           "income_band", "primary_need", "shortlisted", "selected_insurer", "selected_product", "objections",
-           "outcome", "callback_time_ist", "purchase_link", "price_asked", "summary", "turns", "avg_first_audio_ms"]
+COLUMNS = ["timestamp_ist", "session_id", "name", "phone", "age", "gender", "employment_type", "annual_income_inr",
+           "tobacco", "max_cover", "eligible_products", "intents", "discussed_products", "quoted_ranges", "objections",
+           "outcome", "callback_time_ist", "purchase_link", "summary", "turns", "tool_calls", "avg_first_audio_ms"]
 CSV_PATH = pathlib.Path(os.getenv("LEADS_CSV") or pathlib.Path(__file__).resolve().parent.parent / "data" / "leads.csv")
 _lock = threading.Lock()
 
 
-def upsert(row: dict, path: pathlib.Path = CSV_PATH):
+def upsert(row: dict, path: pathlib.Path | None = None):
+    path = pathlib.Path(path or CSV_PATH)
     row = {c: ("" if row.get(c) is None else row.get(c)) for c in COLUMNS}
     with _lock:
         rows = []
         if path.exists():
             with path.open(newline="", encoding="utf-8") as f:
-                rows = list(csv.DictReader(f))
+                reader = csv.DictReader(f)
+                header, rows = reader.fieldnames, list(reader)
+            if header and header != COLUMNS:  # older column layout: keep it, start fresh
+                old = path.with_name(f"{path.stem}.old-{len(header)}cols{path.suffix}")
+                path.rename(old)
+                log.warning("lead log columns changed; moved old file to %s", old)
+                rows = []
         for i, r in enumerate(rows):
             if r.get("session_id") == row["session_id"]:
                 rows[i] = row

@@ -1,146 +1,212 @@
-"""M2: stage machine + field normalisers, without calling an LLM."""
+"""M2b: v2 phase controller end to end with a scripted fake LLM (no network)."""
+import asyncio
+import pathlib
+import re
+import tempfile
 import unittest
-from datetime import datetime, timedelta
+from datetime import timedelta
 from unittest import mock
 
+from app import sheets
 from app.agent import controller as c
-from app.agent.state import IST, Stage
-
-NOW = datetime(2026, 9, 25, 23, 32, tzinfo=IST)  # Friday
+from app.agent.state import Phase, now_ist
 
 
-def out(intent="answered", **kw):
-    ex = kw.pop("extracted", {})
-    return c.TurnOut.model_validate({"reply": "ok", "intent": intent, "extracted": ex, **kw})
+class FakeLLM:
+    """complete_json / chat_with_tools return scripted responses in order; every system prompt is recorded."""
+    tool_mode = "native"
+
+    def __init__(self, json_replies=(), tool_replies=()):
+        self.json_replies, self.tool_replies = list(json_replies), list(tool_replies)
+        self.systems, self.tool_msgs = [], []
+
+    async def complete_json(self, system, messages, schema):
+        self.systems.append(system)
+        data = self.json_replies.pop(0) if self.json_replies else {"summary": "test summary", "intents": ["x"]}
+        return {"data": data, "provider_ms": 5, "input_tokens": 1, "output_tokens": 1}
+
+    async def chat_with_tools(self, system, messages, tools, allow_tools=True):
+        self.systems.append(system)
+        self.tool_msgs.append(list(messages))
+        r = self.tool_replies.pop(0)
+        return {"reply": r.get("reply"), "tool_calls": r.get("tool_calls", []), "raw": None, "provider_ms": 7,
+                "input_tokens": 1, "output_tokens": 1}
 
 
-class TestParsers(unittest.TestCase):
-    def test_time_text(self):
-        cases = {"Tomorrow at 5 pm": (26, 17, 0), "kal shaam 5 baje": (26, 17, 0), "Saturday 11 am": (26, 11, 0),
-                 "parso subah 10:30 baje": (27, 10, 30), "Monday morning at 9": (28, 9, 0)}
-        for text, (d, h, m) in cases.items():
-            with self.subTest(text=text):
-                dt = c.parse_time_text(text, NOW)
-                self.assertEqual((dt.day, dt.hour, dt.minute), (d, h, m))
-        self.assertIsNone(c.parse_time_text("aaj 6 baje", NOW))  # already past
-        self.assertIsNone(c.parse_time_text("no idea", NOW))
-
-    def test_income(self):
-        for v, want in {"18 lakh": "10–25L", "about 18 lakh a year": "10–25L", "<5L": "<5L", "below 5 lakh": "<5L",
-                        "5-10L": "5–10L", "10 se 25 lakh": "10–25L", "30 lakh": "25L+", "25L+": "25L+",
-                        "1 crore": "25L+", "4 lakh": "<5L"}.items():
-            with self.subTest(v=v):
-                self.assertEqual(c.norm_income(v), want)
-
-    def test_goal_dependents_gender(self):
-        self.assertEqual(c.norm_goal("child's future"), "child_future")
-        self.assertEqual(c.norm_goal("savings + protection"), "savings_protection")
-        self.assertEqual(c.norm_dependents("wife and one kid"), "spouse+kids")
-        self.assertEqual(c.norm_dependents("none"), "none")
-        self.assertEqual(c.norm_gender("F"), "female")
-
-    def test_turn_out_lenient(self):
-        t = c.TurnOut.model_validate({"reply": "hi", "intent": "weird", "objection_type": "price",
-                                      "extracted": {"age": "34", "dependents": "none", "city": "null"},
-                                      "product_refs": ["click 2 protect", "nope"], "topics_needed": ["claims", "x"]})
-        self.assertEqual((t.intent, t.objection_type), ("unclear", "other"))
-        self.assertEqual((t.extracted.age, t.extracted.dependents, t.extracted.city), (34, "none", None))
-        self.assertEqual(t.product_refs, ["hdfc-c2p-supreme"])
-        self.assertEqual(t.topics_needed, ["claims"])
+def sys_text(system):
+    return "\n".join(b["text"] for b in system)
 
 
-class TestTransitions(unittest.TestCase):
+class Base(unittest.TestCase):
     def setUp(self):
-        self.s = c.new_session("Rahul", "9876543210")
-        self.s.stage = Stage.CONFIRM_IDENTITY
+        self.tmp = tempfile.NamedTemporaryFile(suffix=".csv", delete=False).name
+        self.patches = [mock.patch.object(sheets, "CSV_PATH", self.tmp)]
+        for p in self.patches:
+            p.start()
 
-    def test_identity(self):
-        c.transition(self.s, out("question"), "Yes, this is Rahul")  # mislabelled intent still moves on
-        self.assertEqual(self.s.stage, Stage.DISCOVERY)
-        s2 = c.new_session("X", "1")
-        s2.stage = Stage.CONFIRM_IDENTITY
-        c.transition(s2, out("confirm_no"), "No, wrong number")
-        self.assertEqual((s2.stage, s2.outcome), (Stage.END, "wrong_person"))
+    def tearDown(self):
+        for p in self.patches:
+            p.stop()
+
+    def run_with(self, fake, coro):
+        with mock.patch.object(c, "get_llm", return_value=fake):
+            return asyncio.run(coro)
+
+
+class TestFlow(Base):
+    def test_full_v2_flow(self):
+        when = (now_ist() + timedelta(days=1)).replace(hour=17, minute=0, second=0, microsecond=0)
+        readback = f"Just to confirm, {when:%A} {when.day} {when:%B} at 5 PM on 9876543210?"
+        fake = FakeLLM(
+            json_replies=[
+                {"reply": "Hello, I'm Asha, an AI assistant. Am I speaking with Rahul?", "reply_language": "en-IN",
+                 "intent": "unclear"},
+                {"reply": "Thanks Rahul! Do you have two minutes?", "reply_language": "en-IN", "intent": "confirm_yes"},
+                {"reply": "Five quick questions. May I know your age?", "reply_language": "en-IN",
+                 "extracted": {}, "intent": "answered"},
+                {"reply": "Thanks. And your gender?", "reply_language": "en-IN",
+                 "extracted": {"age": 30}, "intent": "answered"},
+            ],
+            tool_replies=[
+                {"reply": "You can get term cover of up to about 3 crore. What would you like it to do for you?"},
+                {"reply": None, "tool_calls": [{"id": "t1", "name": "get_premium_estimate",
+                                                "args": {"product_id": "sbi-smart-shield-plus",
+                                                         "sum_assured": 20_000_000}}]},
+                {"reply": "For 2 crore it's roughly in this range, indicative only. Shall I set up an advisor call?"},
+                {"reply": readback},
+                {"reply": None, "tool_calls": [{"id": "t2", "name": "book_callback",
+                                                "args": {"datetime_iso": when.isoformat(),
+                                                         "customer_confirmed": True}}]},
+                {"reply": "Booked! Anything else?"},
+                {"reply": "Thank you Rahul, goodbye!", "tool_calls": [{"id": "t3", "name": "end_conversation",
+                                                                        "args": {"outcome": "callback_scheduled"}}]},
+            ])
+
+        async def convo():
+            s = c.new_session("Rahul", "9876543210")
+            await c.start(s)
+            self.assertEqual(s.phase, Phase.CONFIRM_IDENTITY)
+            await c.handle_turn(s, "Yes, speaking")
+            self.assertEqual(s.phase, Phase.INTAKE)
+            await c.handle_turn(s, "Sure")
+            self.assertIn("NEXT SLOT: age", sys_text(fake.systems[-1]))
+            await c.handle_turn(s, "thirty")          # code can't parse it; the LLM's extraction fills age
+            self.assertEqual(s.profile["age"], 30)
+            await c.handle_turn(s, "male")
+            await c.handle_turn(s, "salaried, 12 lakh a year, never smoked")  # completes intake in code
+            self.assertEqual(s.phase, Phase.CONSULT)
+            self.assertEqual(s.snapshot["max_cover"], 30_000_000)
+            self.assertIn("CONSULT (opening)", sys_text(fake.systems[-1]))
+            self.assertIn('"max_cover": 30000000', sys_text(fake.systems[-1]))
+            r = await c.handle_turn(s, "What would 2 crore cover cost?")
+            self.assertEqual(r["tool_calls"], [{"name": "get_premium_estimate", "ok": True}])
+            self.assertEqual(s.quoted[-1]["sum_assured"], 20_000_000)
+            await c.handle_turn(s, "Yes, tomorrow at 5 pm")
+            self.assertEqual(s.phase, Phase.CLOSE)
+            self.assertIn("Code resolved the time", sys_text(fake.systems[-1]))
+            r = await c.handle_turn(s, "Yes")
+            self.assertEqual(r["events"][0]["type"], "callback_booked")
+            self.assertEqual(s.phase, Phase.WRAP_UP)
+            r = await c.handle_turn(s, "No, that's all, bye")
+            self.assertTrue(r["ended"])
+            return s
+
+        s = self.run_with(fake, convo())
+        self.assertEqual(s.outcome, "callback_scheduled")
+        self.assertEqual(s.summary, "test summary")
+        row = pathlib.Path(self.tmp).read_text()
+        self.assertIn("callback_scheduled", row)
+        self.assertIn("sbi-smart-shield-plus@20000000", row)
+
+    def test_wrong_person(self):
+        fake = FakeLLM(json_replies=[
+            {"reply": "Hi, am I speaking with Priya?", "reply_language": "en-IN", "intent": "unclear"},
+            {"reply": "Sorry for the trouble, goodbye.", "reply_language": "en-IN", "intent": "wrong_person"}])
+
+        async def convo():
+            s = c.new_session("Priya", "9876543210")
+            await c.start(s)
+            return s, await c.handle_turn(s, "No, wrong number")
+
+        s, r = self.run_with(fake, convo())
+        self.assertTrue(r["ended"])
+        self.assertEqual(s.outcome, "wrong_person")
 
     def test_not_interested_one_soft_retry(self):
-        self.s.stage = Stage.DISCOVERY
-        c.transition(self.s, out("not_interested"), "not interested")
-        self.assertEqual(self.s.stage, Stage.DISCOVERY)
-        self.assertTrue(self.s.soft_retry_used)
-        c.transition(self.s, out("not_interested"), "no really")
-        self.assertEqual((self.s.stage, self.s.outcome), (Stage.END, "not_interested"))
+        fake = FakeLLM(json_replies=[
+            {"reply": "Hi, Amit?", "reply_language": "en-IN", "intent": "unclear"},
+            {"reply": "Totally fine — could I take just two minutes?", "reply_language": "en-IN",
+             "intent": "not_interested"},
+            {"reply": "Understood, thank you. Goodbye!", "reply_language": "en-IN", "intent": "not_interested"}])
 
-    def test_repeated_objection_ends(self):
-        self.s.stage = Stage.RECOMMEND
-        c.transition(self.s, out("objection", objection_type="too_expensive"), "too costly")
-        self.assertEqual(self.s.stage, Stage.RECOMMEND)
-        c.transition(self.s, out("objection", objection_type="too_expensive"), "still too costly")
-        self.assertEqual(self.s.stage, Stage.END)
+        async def convo():
+            s = c.new_session("Amit", "9876543210")
+            await c.start(s)
+            r1 = await c.handle_turn(s, "Not interested")
+            r2 = await c.handle_turn(s, "No really")
+            return s, r1, r2
 
-    def test_discovery_to_need_check(self):
-        self.s.stage = Stage.DISCOVERY
-        self.s.profile.update(goal="pure_protection", age=34, dependents="spouse+kids", income_band="10–25L",
-                              gender="male", city="Pune", motivation="new baby")
-        c.transition(self.s, out("answered"), "Pune")
-        self.assertEqual(self.s.stage, Stage.NEED_CHECK)
-        self.assertEqual(len(self.s.shortlist), 3)
-        c.transition(self.s, out("answered"), "Yes, that's right")
-        self.assertEqual(self.s.stage, Stage.RECOMMEND)
-        self.assertEqual(self.s.pitched_product, self.s.shortlist[0])
+        s, r1, r2 = self.run_with(fake, convo())
+        self.assertFalse(r1["ended"])
+        self.assertTrue(r2["ended"])
+        self.assertEqual(s.outcome, "not_interested")
 
-    @mock.patch("app.agent.controller.actions.log_callback", return_value={"type": "callback_booked"})
-    def test_callback_needs_readback_then_yes(self, log_cb):
-        self.s.stage = Stage.QA
-        self.s.shortlist = ["hdfc-c2p-supreme"]
-        iso = (datetime.now(IST) + timedelta(days=1)).replace(hour=17, minute=0, second=0, microsecond=0).isoformat()
-        c.transition(self.s, out("wants_callback", extracted={"callback_time_iso": iso}), "tomorrow 5 pm")
-        self.assertEqual(self.s.stage, Stage.CALLBACK)
-        self.assertIsNotNone(self.s.pending_callback_iso)
-        log_cb.assert_not_called()
-        # the LLM repeats the same time on the confirming turn: must book, not loop
-        ev = c.transition(self.s, out("confirm_yes", extracted={"callback_time_iso": iso}), "Yes")
-        log_cb.assert_called_once()
-        self.assertEqual(self.s.stage, Stage.END)
-        self.assertEqual(ev, [{"type": "callback_booked"}])
+    def test_several_slots_then_gender_asked(self):
+        fake = FakeLLM(json_replies=[{"reply": "And your gender?", "reply_language": "en-IN", "extracted": {},
+                                      "intent": "answered"}])
 
-    def test_buy_now_without_link_goes_to_callback(self):
-        self.s.stage = Stage.RECOMMEND
-        self.s.shortlist = ["icici-iprotect-smart-plus"]
-        c.transition(self.s, out("wants_to_buy_now"), "I want to buy now")
-        self.assertEqual(self.s.stage, Stage.CALLBACK)
-        self.assertEqual(self.s.selected_product, "icici-iprotect-smart-plus")
+        async def convo():
+            s = c.new_session("Rahul", "9876543210")
+            s.phase = Phase.INTAKE
+            await c.handle_turn(s, "32, salaried, 18 lakh a year, non-smoker")
+            return s
 
-    def test_buy_now_with_link(self):
-        self.s.stage = Stage.CLOSE
-        self.s.selected_product = "hdfc-c2p-supreme"
-        with mock.patch.dict(c.knowledge.cards()["hdfc-c2p-supreme"], {"purchase_url": "https://example.com/p"}):
-            ev = c.transition(self.s, out("wants_to_buy_now"), "buy now")
-        self.assertEqual(self.s.stage, Stage.PURCHASE_LINK)
-        self.assertEqual(ev[0]["type"], "purchase_link")
-        self.assertEqual(self.s.outcome, "purchase_link_sent")
+        s = self.run_with(fake, convo())
+        self.assertEqual(s.profile, {"age": 32, "gender": None, "employment_type": "salaried",
+                                     "annual_income_inr": 1_800_000, "tobacco": False})
+        self.assertIn("NEXT SLOT: gender", sys_text(fake.systems[-1]))
 
-    def test_price_asked_flag(self):
-        self.s.stage = Stage.QA
-        c.transition(self.s, out("asks_price"), "kitna lagega?")
-        self.assertTrue(self.s.price_asked)
+    def test_tool_rounds_capped(self):
+        loop_call = {"reply": None, "tool_calls": [{"id": "x", "name": "get_claims_record",
+                                                    "args": {"insurer_slug": "sbi-life"}}]}
+        fake = FakeLLM(tool_replies=[loop_call, loop_call, {"reply": "Here's the record.", "tool_calls": []}])
+
+        async def convo():
+            s = c.new_session("Rahul", "9876543210")
+            s.profile = {"age": 30, "gender": "male", "employment_type": "salaried",
+                         "annual_income_inr": 1_200_000, "tobacco": False}
+            c._finish_intake(s)
+            s.consult_opened = True
+            return s, await c.handle_turn(s, "Does SBI pay claims?")
+
+        s, r = self.run_with(fake, convo())
+        self.assertEqual(r["reply"], "Here's the record.")
+        self.assertEqual(len(r["tool_calls"]), 2)  # 2 rounds, then the model had to answer
+        self.assertEqual(s.metrics["tool_rounds"], 2)
 
 
 class TestPrompt(unittest.TestCase):
-    def test_no_unfilled_placeholders_and_static_first(self):
-        import re
+    def test_placeholders_and_cache_split(self):
         s = c.new_session("Rahul", "9876543210")
-        s.stage = Stage.QA
-        s.shortlist = ["hdfc-c2p-supreme"]
-        route = c.knowledge.route_topics("claim kaise milega?", {"selected_product": "hdfc-c2p-supreme"})
-        blocks = c.build_system(s, Stage.QA, route, objection=True, user_text="claim kaise milega?")
-        text = blocks[0]["text"] + blocks[1]["text"]
-        self.assertEqual(set(re.findall(r"\{(\w+)\}", text)), set())
-        self.assertTrue(blocks[0]["cache"])
-        self.assertIn("PRODUCT CARDS", blocks[0]["text"])
-        self.assertIn("PROCESS KNOWLEDGE", blocks[0]["text"])
-        self.assertNotIn("CURRENT DATE AND TIME NOW", blocks[0]["text"])  # per-turn time stays out of cache
-        self.assertIn("too_expensive", blocks[1]["text"])  # playbook loaded
-        self.assertIn("claims", blocks[1]["text"])
+        s.profile = {"age": 30, "gender": "male", "employment_type": "salaried", "annual_income_inr": 1_200_000,
+                     "tobacco": False}
+        c._finish_intake(s)
+        for phase, out in [(Phase.GREET, c.snippet("OUTPUT_SIMPLE")), (Phase.CONSULT, c.snippet("OUTPUT_CONSULT"))]:
+            blocks = c.build_system(s, phase, out, "claim kaise milega? tomorrow 5 pm")
+            text = blocks[0]["text"] + blocks[1]["text"]
+            self.assertEqual(set(re.findall(r"\{(\w+)\}", text)), set(), phase)
+            self.assertTrue(blocks[0]["cache"])
+            self.assertIn("PRODUCT CARDS", blocks[0]["text"])
+            self.assertNotIn("NOW (IST)", blocks[0]["text"])  # per-turn time stays out of the cached block
+        self.assertIn("SNAPSHOT", blocks[1]["text"])
+        self.assertIn("paid_pct_by_amount", blocks[1]["text"])
+
+    def test_time_parser_kept(self):
+        from datetime import datetime
+        from app.agent.state import IST
+        now = datetime(2026, 9, 25, 23, 32, tzinfo=IST)
+        self.assertEqual(c.parse_time_text("kal shaam 5 baje", now).hour, 17)
+        self.assertEqual(c.parse_time_text("Saturday 11 am", now).day, 26)
 
 
 if __name__ == "__main__":

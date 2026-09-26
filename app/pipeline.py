@@ -74,13 +74,18 @@ async def speak(send, text: str, lang: str, turn_id: int, t0: float) -> dict:
 
 
 def state_event(state: SessionState) -> dict:
-    return {"type": "state", "stage": state.stage.value,
+    snap = state.snapshot or {}
+    cards = knowledge.cards()
+    return {"type": "state", "stage": state.phase.value, "phase": state.phase.value,
             "profile": {k: v for k, v in state.profile.items() if v is not None},
-            "shortlist": [{"id": p, "name": knowledge.cards()[p]["name"],
-                           "insurer": knowledge.cards()[p]["insurer"]} for p in state.shortlist],
-            "selected_product": state.selected_product, "outcome": state.outcome,
-            "callback_time": state.callback_time or state.pending_callback_iso,
-            "callback_confirmed": bool(state.callback_time)}
+            "max_cover": snap.get("max_cover"),
+            "shortlist": [{"id": e["product_id"], "name": cards[e["product_id"]]["name"],
+                           "insurer": cards[e["product_id"]]["insurer"],
+                           "quotes": [{"sum_assured": q["sum_assured"], "range": q["annual_premium_range"]}
+                                      for q in e.get("quotes", [])]} for e in snap.get("eligible", [])],
+            "discussed": state.discussed_products, "outcome": state.outcome,
+            "callback_time": state.callback_time, "callback_confirmed": bool(state.callback_time),
+            "tool_calls": len(state.tool_calls)}
 
 
 async def greet(state: SessionState, send) -> dict:
@@ -110,7 +115,18 @@ async def run_turn(state: SessionState, send, turn_id: int, audio: bytes | None 
         return {"turn": turn_id, "stt_ms": stt_ms, "llm_ms": 0, **timing, "empty": True}
 
     await send({"type": "transcript", "role": "user", "text": text, "lang": lang})
-    res = await controller.handle_turn(state, text, lang)
+    filler = {"sent": False}
+
+    async def on_tool_round(rnd, llm_ms):
+        # a tool round means another LLM call: say a short filler if the customer has already waited > 1.5 s
+        if filler["sent"] or ms_since(t0) < 1500:
+            return
+        filler["sent"] = True
+        hi = controller.customer_language(state) != "English"
+        line = controller.snippet("FILLER_HI" if hi else "FILLER_EN")
+        asyncio.create_task(speak(send, line, "hi-IN" if hi else "en-IN", turn_id - 0.5, time.perf_counter()))
+
+    res = await controller.handle_turn(state, text, lang, on_tool_round=on_tool_round)
     await send({"type": "transcript", "role": "agent", "text": res["reply"], "lang": res["reply_language"]})
     for ev in res["events"]:
         await send(ev)

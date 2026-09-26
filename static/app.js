@@ -24,8 +24,10 @@
   }
   function renderState(s) {
     $('stage').textContent = s.stage.replace('_', ' ');
-    const rows = Object.entries(s.profile || {});
-    if (s.selected_product) rows.push(['selected', s.selected_product]);
+    const inr = (n) => '₹' + Number(n).toLocaleString('en-IN');
+    const rows = Object.entries(s.profile || {}).map(([k, v]) => [k, k === 'annual_income_inr' ? inr(v) : String(v)]);
+    if (s.max_cover) rows.push(['max cover', inr(s.max_cover)]);
+    if (s.discussed && s.discussed.length) rows.push(['discussed', s.discussed.join(', ')]);
     if (s.callback_time) rows.push([s.callback_confirmed ? 'callback' : 'callback (pending)',
                                     new Date(s.callback_time).toLocaleString('en-IN', { dateStyle: 'medium', timeStyle: 'short' })]);
     if (s.outcome) rows.push(['outcome', s.outcome]);
@@ -40,7 +42,10 @@
       const li = document.createElement('li'); li.style.color = 'var(--muted)'; li.textContent = 'not yet'; ol.append(li);
     }
     for (const p of s.shortlist || []) {
-      const li = document.createElement('li'); li.textContent = `${p.insurer} — ${p.name}`; ol.append(li);
+      const q = (p.quotes || [])[0];
+      const li = document.createElement('li');
+      li.textContent = `${p.insurer} — ${p.name}` + (q ? ` · ${inr(q.sum_assured)} cover ≈ ${inr(q.range[0])}–${inr(q.range[1])}/yr` : '');
+      ol.append(li);
     }
   }
   function addLatency(l) {
@@ -75,7 +80,7 @@
     return new Blob([buf], { type });
   }
   function onAudio(m) {
-    if (m.turn < skipBefore) return;            // interrupted turn
+    if (m.turn < skipBefore || m.turn < playTurn) return;  // interrupted turn, or a late filler
     if (m.turn !== playTurn) { playTurn = m.turn; pending = {}; nextSeq = 0; }
     pending[m.seq] = m;
     pump();

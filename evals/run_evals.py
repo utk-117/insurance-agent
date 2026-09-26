@@ -32,9 +32,9 @@ from app.adapters.base import LLMParseError, ProviderError  # noqa: E402
 from app.adapters.llm.sarvam import SarvamLLM  # noqa: E402
 from app.agent import controller, knowledge  # noqa: E402
 
-PREFIX_LEADS = {"savings_hi": "Sunita"}
-SCORE_KEYS = ["need_elicited", "need_played_back", "benefit_tied_to_need", "grounded", "guided_next_step",
-              "objection_handled_once", "no_pressure", "no_price"]
+PREFIX_LEADS = {"intake_hi_f": "Sunita"}
+SCORE_KEYS = ["intake_clean", "intent_understood", "fit_explained", "grounded", "price_with_disclaimer",
+              "moves_to_close", "objection_handled_once", "no_pressure", "respects_no"]
 JUDGE_SCHEMA = {
     "type": "object",
     "properties": {
@@ -80,7 +80,7 @@ class Runner:
 
     async def play(self, state, turns, events):
         for t in turns:
-            if state.stage.value == "END":
+            if state.phase.value == "END":
                 break
             res = await controller.handle_turn(state, t)
             events += res["events"]
@@ -94,7 +94,9 @@ class Runner:
                 events = []
                 await self.play(state, expand(self.prefixes[name], self.prefixes), events)
                 self.prefix_cache[name] = (state, events)
-                print(f"  prefix ${name}: stage={state.stage.value} shortlist={state.shortlist}", flush=True)
+                snap = state.snapshot or {}
+                print(f"  prefix ${name}: phase={state.phase.value} profile={state.profile} "
+                      f"max_cover={snap.get('max_cover')}", flush=True)
         state, events = self.prefix_cache[name]
         state = copy.deepcopy(state)
         state.session_id = uuid.uuid4().hex[:12]
@@ -113,6 +115,7 @@ class Runner:
         t0 = time.perf_counter()
         await self.play(state, rest, events)
         state.summary = state.summary or "(eval run)"  # skip the summary LLM call
+        state.final_phase = state.phase.value  # finish() always sets END; checks need where the conversation was
         await controller.finish(state)
         return state, events, round(time.perf_counter() - t0, 1)
 
@@ -135,19 +138,28 @@ def reply_to_turn(state, k):
 def check(case, state, events):
     ex, fails = case.get("expect") or {}, []
     ev_types = [e["type"] for e in events]
+    snap = state.snapshot or {}
+    eligible = [e["product_id"] for e in snap.get("eligible", [])]
     if "outcome" in ex and state.outcome != ex["outcome"]:
         fails.append(f"outcome={state.outcome} want {ex['outcome']}")
-    if "ended" in ex and (state.stage.value == "END") != ex["ended"]:
-        fails.append(f"ended={state.stage.value == 'END'} want {ex['ended']}")
-    if "price_asked" in ex and state.price_asked != ex["price_asked"]:
-        fails.append(f"price_asked={state.price_asked}")
-    if "stage_in" in ex and state.stage.value not in ex["stage_in"]:
-        fails.append(f"stage={state.stage.value} want one of {ex['stage_in']}")
-    if ex.get("shortlist_empty") and state.shortlist:
-        fails.append(f"shortlist not empty: {state.shortlist}")
+    phase = getattr(state, "final_phase", state.phase.value)
+    if "ended" in ex and (phase == "END") != ex["ended"]:
+        fails.append(f"ended={phase == 'END'} want {ex['ended']}")
+    if "phase_in" in ex and phase not in ex["phase_in"]:
+        fails.append(f"phase={phase} want one of {ex['phase_in']}")
     for f, v in (ex.get("profile") or {}).items():
         if state.profile.get(f) != v:
             fails.append(f"profile.{f}={state.profile.get(f)!r} want {v!r}")
+    if "max_cover" in ex and snap.get("max_cover") != ex["max_cover"]:
+        fails.append(f"max_cover={snap.get('max_cover')} want {ex['max_cover']}")
+    for pid in ex.get("eligible_has") or []:
+        if pid not in eligible:
+            fails.append(f"{pid} not eligible")
+    for pid in ex.get("eligible_lacks") or []:
+        if pid in eligible:
+            fails.append(f"{pid} unexpectedly eligible")
+    if ex.get("no_term_plans") and any("quotes" in e for e in snap.get("eligible", [])):
+        fails.append("term plans offered to a non-earner")
     for e in ex.get("events") or []:
         if e not in ev_types:
             fails.append(f"missing event {e}")
@@ -165,14 +177,17 @@ def check(case, state, events):
         reply = reply_to_turn(state, rr.get("turn", -1))
         if not any(re.search(p, reply) for p in rr["any"]):
             fails.append(f"reply lacks {rr['any']}: {reply[:120]}")
-    for pid, topic in (ex.get("sections_loaded") or {}).items():
-        if not any(topic in (tl["sections"].get(pid) or []) for tl in state.turn_log):
-            fails.append(f"section {pid}/{topic} never loaded")
-    if "claims_fallback" in ex and not any(ex["claims_fallback"] in tl["claims_fallback"] for tl in state.turn_log):
-        fails.append(f"claims fallback {ex['claims_fallback']} not used")
-    for m, mx in (ex.get("max_metrics") or {}).items():
-        if state.metrics.get(m, 0) > mx:
-            fails.append(f"metrics.{m}={state.metrics[m]} > {mx}")
+    if "tool_used" in ex and not any(c["name"] == ex["tool_used"] and c["ok"] for c in state.tool_calls):
+        fails.append(f"tool {ex['tool_used']} never succeeded ({[c['name'] for c in state.tool_calls]})")
+    if "no_tools_on_turn" in ex and state.turn_log:
+        tl = state.turn_log[ex["no_tools_on_turn"]]
+        if tl["tool_calls"]:
+            fails.append(f"common turn used tools: {tl['tool_calls']}")
+    if "intake_questions" in ex:
+        # every INTAKE->INTAKE turn is one intake question asked; the answer to the last one leaves INTAKE
+        n = sum(1 for tl in state.turn_log if tl["phase_in"] == "INTAKE" and tl["phase_out"] == "INTAKE")
+        if n != ex["intake_questions"]:
+            fails.append(f"intake took {n} questions, want {ex['intake_questions']}")
     fb = sum(1 for tl in state.turn_log if tl.get("fallback"))
     if fb:
         fails.append(f"{fb} fallback repl{'y' if fb == 1 else 'ies'} (LLM parse/provider failure)")
@@ -182,23 +197,26 @@ def check(case, state, events):
 # ---- judge ------------------------------------------------------------------------------------
 
 def source_documents(state):
-    loaded = {}
-    for tl in state.turn_log:
-        for pid, topics in tl["sections"].items():
-            loaded.setdefault(pid, set()).update(topics)
-    sections = []
-    for pid, topics in loaded.items():
-        for s in knowledge.get_sections(pid, sorted(topics)):
-            sections.append(f"### {pid} — {s['topic']}\n{(s.get('text') or 'NOT IN BROCHURE')[:6000]}")
-    slugs = {knowledge.insurer_slug(p) for p in list(loaded) + state.shortlist}
-    slugs |= {s for tl in state.turn_log for s in tl["claims_fallback"]}
-    insurers = [knowledge.cards()[p]["insurer"] for p in state.shortlist + list(loaded)]
+    """What the agent could see: cards, snapshot, claims, and re-run results of the info tools it called."""
+    results = []
+    for c in state.tool_calls:
+        if c["name"] == "get_product_info" and c["ok"]:
+            for sec in knowledge.get_sections(c["args"]["product_id"], c["args"].get("topics", [])):
+                results.append(f"### get_product_info {c['args']['product_id']} — {sec['topic']}\n"
+                               f"{(sec.get('text') or 'NOT IN BROCHURE')[:4000]}")
+        elif c["name"] == "get_savings_illustration" and c["ok"]:
+            ill = knowledge.intake_rules().savings_illustration(c["args"]["product_id"], int(c["args"]["annual_premium"]))
+            results.append(f"### get_savings_illustration {json.dumps(c['args'])}\n{json.dumps(ill, ensure_ascii=False)}")
+        elif c["name"] in ("get_process_info", "compare_products", "get_claims_record") and c["ok"]:
+            results.append(f"### {c['name']} {json.dumps(c['args'])} (ok)")
+    if state.quoted:
+        results.append("### premium estimates returned\n" + json.dumps(state.quoted))
+    snap = controller._snapshot_text(state) if state.snapshot else "(intake not finished)"
     return "\n\n".join([
+        "## SNAPSHOT (code: eligibility, max cover, indicative price ranges)\n" + snap,
+        "## CLAIMS RECORD\n" + controller._claims_text(state),
+        "## TOOL RESULTS\n" + ("\n\n".join(results) or "(none)"),
         "## PRODUCT CARDS\n" + json.dumps(knowledge.prompt_cards(), ensure_ascii=False),
-        "## NEED FIT (shortlisted products)\n" + json.dumps(knowledge.need_fit_for(state.shortlist), ensure_ascii=False),
-        "## CLAIMS RECORD\n" + json.dumps(knowledge.claims_record(insurers), ensure_ascii=False),
-        "## PRODUCT SECTIONS SHOWN TO THE AGENT\n" + ("\n\n".join(sections) or "(none)"),
-        "## INSURER NOTES\n" + "\n\n".join(knowledge.insurer_notes(s) for s in sorted(slugs)),
         "## PROCESS KNOWLEDGE\n" + knowledge.buying_process(),
     ])
 
@@ -210,7 +228,9 @@ def transcript_text(state):
             lines.append(f"CUSTOMER: {t['text']}")
         else:
             tl = state.turn_log[k - 1] if 0 < k <= len(state.turn_log) else None
-            tag = f" [{tl['stage_in']}->{tl['stage_out']}, intent={tl['intent']}]" if tl else " [GREET]"
+            tag = (f" [{tl['phase_in']}->{tl['phase_out']}"
+                   + (f", tools={[c['name'] for c in tl['tool_calls']]}" if tl["tool_calls"] else "") + "]") if tl \
+                else " [GREET]"
             lines.append(f"AGENT{tag}: {t['text']}")
             k += 1
     return "\n".join(lines)
@@ -255,7 +275,7 @@ async def main(args):
                 return
             fails = check(case, state, events)
             try:
-                jres, sc = await judge(jllm, case, state)
+                jres, sc = await judge(jllm, case, state) if not args.no_judge else ([], {})
             except Exception as e:
                 jres = [{"i": i, "pass": False, "why": f"judge crashed: {e!r}"[:200], "text": a}
                         for i, a in enumerate(case.get("judge") or [])]
@@ -263,8 +283,9 @@ async def main(args):
             fails += [f"judge: {a['text']} — {a.get('why')}" for a in jres if not a.get("pass")]
             results.append({"id": case["id"], "must": case.get("must", False), "name": case["name"],
                             "pass": not fails, "fails": fails, "judge": jres, "scorecard": sc,
-                            "outcome": state.outcome, "stage": state.stage.value, "secs": secs,
-                            "metrics": state.metrics, "transcript": transcript_text(state)})
+                            "outcome": state.outcome, "phase": state.final_phase, "secs": secs,
+                            "metrics": state.metrics, "tool_calls": state.tool_calls,
+                            "transcript": transcript_text(state)})
             print(f"  {'PASS' if not fails else 'FAIL'} {case['id']} ({secs}s)", flush=True)
 
     plain = [c for c in cases if not c.get("patch_purchase_urls")]
@@ -299,8 +320,11 @@ async def main(args):
     scored = [v for v in avg.values() if v is not None]
     print("scorecard: " + " · ".join(f"{k}={v}" for k, v in avg.items())
           + (f" · mean={round(sum(scored) / len(scored), 2)}" if scored else ""))
-    tot = {m: sum((r.get("metrics") or {}).get(m, 0) for r in results)
-           for m in ("llm_calls", "router_miss", "objection_followup", "parse_fallbacks")}
+    tot = {m: sum((r.get("metrics") or {}).get(m) or 0 for r in results)
+           for m in ("llm_calls", "tool_rounds", "parse_fallbacks")}
+    calls = [c for r in results for c in r.get("tool_calls", [])]
+    tot["tool_calls"] = len(calls)
+    tot["tool_errors"] = sum(not c["ok"] for c in calls)
     print(f"metrics (summed per case; shared prefix turns counted in each): {tot}")
     RESULTS.mkdir(parents=True, exist_ok=True)
     out = RESULTS / f"{provider}-{STAMP}.json"
@@ -315,5 +339,6 @@ if __name__ == "__main__":
     ap.add_argument("--llm", default=None, help="sarvam | anthropic (default LLM_PROVIDER)")
     ap.add_argument("--only", default=None, help="comma-separated case ids")
     ap.add_argument("--concurrency", type=int, default=4)
+    ap.add_argument("--no-judge", action="store_true", help="code checks only (no judge LLM calls)")
     a = ap.parse_args()
     sys.exit(0 if asyncio.run(main(a)) else 1)

@@ -40,18 +40,10 @@ class TestEligibility(unittest.TestCase):
 
 
 class TestShortlist(unittest.TestCase):
-    def test_gate_assured_savings_needs_25l(self):
-        base = {"age": 35, "goal": "savings + protection", "primary_need": "lump_sum_goal"}
-        self.assertNotIn("icici-assured-savings", k.rank_products({**base, "income_band": "10–25L"}))
-        self.assertNotIn("icici-assured-savings", k.rank_products(base))  # unknown band fails closed
-        self.assertIn("icici-assured-savings", k.rank_products({**base, "income_band": "25L+"}))
-
-    def test_soft_gate_lowers_rank_only(self):
-        p = {"age": 35, "goal": "pure protection", "primary_need": "family_income_protection"}
-        self.assertEqual(k.rank_products({**p, "income_band": "10–25L"})[0], "icici-iprotect-smart-plus")
-        low = k.rank_products({**p, "income_band": "<5L"})
-        self.assertIn("icici-iprotect-smart-plus", low)
-        self.assertEqual(low[-1], "icici-iprotect-smart-plus")
+    def test_gates_moved_to_underwriting_rules(self):
+        # v2: gates live in underwriting_rules.json and are applied by profile_snapshot(), not by need_fit
+        self.assertNotIn("gate", k.need_fit()["products"]["icici-assured-savings"])
+        self.assertIn("icici-assured-savings", k.underwriting_rules()["gates"])
 
     def test_need_ranking(self):
         top = k.shortlist({"age": 35, "goal": "retirement", "primary_need": "guaranteed_second_income"})

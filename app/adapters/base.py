@@ -7,6 +7,12 @@ plus one line in the matching REGISTRY dict.
   TTS.speak(text: str, language_code: str) -> {audio: bytes, mime: str, provider_ms}
   LLM.complete_json(system: str|list, messages: list, schema: dict)
       -> {data: dict, provider_ms, input_tokens, output_tokens}
+  LLM.chat_with_tools(system, messages, tools, allow_tools=True)
+      -> {reply: str|None, tool_calls: [{id, name, args}], raw, provider_ms, input_tokens, output_tokens}
+     messages use one neutral format:  {"role": "user"|"assistant", "content": str}
+       assistant tool turn: {"role": "assistant", "content": str|None, "tool_calls": [{id, name, args}], "raw": ...}
+       tool result:         {"role": "tool", "tool_call_id": id, "name": name, "content": json str}
+     tools: [{name, description, parameters (JSON schema)}]
 All methods are async.
 """
 from __future__ import annotations
@@ -15,6 +21,7 @@ import importlib
 import json
 import logging
 import os
+import pathlib
 import re
 import time
 from contextlib import contextmanager
@@ -137,6 +144,22 @@ def check_required(data: dict, schema: dict):
     missing = [k for k in schema.get("required", []) if k not in data]
     if missing:
         raise ValueError(f"missing keys: {missing}")
+
+
+def prompt_section(file: str, name: str) -> str:
+    """'## NAME' section of prompts/<file> (adapters keep their protocol text in prompts/, not in code)."""
+    text = (pathlib.Path(__file__).resolve().parents[2] / "prompts" / file).read_text()
+    m = re.search(rf"(?ms)^## {re.escape(name)}\n(.*?)(?=^## |\Z)", text)
+    return m.group(1).strip() if m else ""
+
+
+TOOL_ERRORS: dict = {}  # provider -> malformed tool calls (bad JSON args / unknown shape)
+
+
+def count_tool_error(provider: str, detail: str = ""):
+    TOOL_ERRORS[provider] = TOOL_ERRORS.get(provider, 0) + 1
+    log.warning(json.dumps({"event": "llm_tool_call_error", "provider": provider, "total": TOOL_ERRORS[provider],
+                            "detail": detail[:200]}))
 
 
 def count_parse_failure(provider: str):

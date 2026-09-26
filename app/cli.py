@@ -27,8 +27,12 @@ def show(res, debug, state):
             print(f"   [end] outcome={ev['outcome']}")
     if debug:
         p = {k: v for k, v in state.profile.items() if v is not None}
-        print(f"   ({res['stage']} | llm {res['llm_ms']} ms | {res['reply_language']} | profile {json.dumps(p, ensure_ascii=False)}"
-              f" | shortlist {state.shortlist} | selected {state.selected_product})")
+        snap = state.snapshot
+        head = f" | max cover {snap['max_cover']} | eligible {len(snap['eligible'])}" if snap else ""
+        tools = " | tools " + ", ".join(f"{c['name']}{'' if c['ok'] else '(ERR)'}" for c in res.get("tool_calls", [])) \
+            if res.get("tool_calls") else ""
+        print(f"   ({res['phase']} | llm {res['llm_ms']} ms | {res['reply_language']} | profile "
+              f"{json.dumps(p, ensure_ascii=False)}{head}{tools})")
 
 
 async def main(args):

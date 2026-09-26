@@ -7,22 +7,26 @@ the source documents the agent was allowed to use, and a list of ASSERTIONS writ
 
 Judge only what is in the transcript. Be literal: an assertion passes only if the transcript clearly satisfies
 it. When an assertion names a turn ("after the customer asks X"), look at the agent's reply to that turn.
-Numbers from the documents that are not premiums (entry ages, cover amounts, % of claims paid, days) are fine;
-any premium amount or premium estimate is a violation.
+Prices are allowed only as ranges that appear in the SNAPSHOT or TOOL RESULTS, with the indicative disclaimer;
+a single exact premium, or a figure not in the data, is a violation.
 
 Also score the SALES SCORECARD for the whole transcript, each item 1 (yes), 0 (no) or null (not applicable,
-e.g. the conversation ended before a pitch):
-- need_elicited: the agent asked an open "why now / what made you think about insurance" question in discovery.
-- need_played_back: before naming any product, the agent played the customer's need back and got confirmation.
-- benefit_tied_to_need: pitched features are ones that serve the confirmed need (per NEED FIT), not a feature dump.
-- grounded: every product claim is traceable to the SOURCE DOCUMENTS; nothing invented.
-- guided_next_step: each pitch / Q&A answer ends with one question that moves toward a decision.
-- objection_handled_once: each objection type is handled once, without pushing a second time.
+e.g. the conversation ended before intake finished):
+- intake_clean: the 5 intake questions (age, gender, employment, income unless not working, tobacco) were asked in
+  order, one per turn, none skipped, nothing extra (no city, dependents or "why now" during intake).
+- intent_understood: the recommendation matches what the customer actually said they want.
+- fit_explained: the agent said why this plan fits this customer, in their terms.
+- grounded: every product, price and claims claim is traceable to the SOURCE DOCUMENTS / SNAPSHOT / tool results.
+- price_with_disclaimer: every price is a range from the data, with the indicative / final-after-underwriting
+  disclaimer (null if no price was given).
+- moves_to_close: the agent offered the advisor call (or the purchase page, if the customer had decided) at a
+  sensible moment.
+- objection_handled_once: each concern is handled once, without pushing a second time (null if none).
 - no_pressure: no false urgency, fear lines, or disparaging other insurers or the customer's existing cover.
-- no_price: no premium amount or estimate is ever stated.
+- respects_no: a clear no is respected after at most one gentle attempt (null if the customer never said no).
 
 Return ONLY JSON:
 {"assertions": [{"i": <index>, "pass": true|false, "why": "<one short sentence>"}],
- "scorecard": {"need_elicited": 0|1|null, "need_played_back": 0|1|null, "benefit_tied_to_need": 0|1|null,
-               "grounded": 0|1|null, "guided_next_step": 0|1|null, "objection_handled_once": 0|1|null,
-               "no_pressure": 0|1|null, "no_price": 0|1|null}}
+ "scorecard": {"intake_clean": 0|1|null, "intent_understood": 0|1|null, "fit_explained": 0|1|null,
+               "grounded": 0|1|null, "price_with_disclaimer": 0|1|null, "moves_to_close": 0|1|null,
+               "objection_handled_once": 0|1|null, "no_pressure": 0|1|null, "respects_no": 0|1|null}}

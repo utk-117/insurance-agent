@@ -17,20 +17,22 @@ def share_purchase_link(state: SessionState, product_id: str) -> dict | None:
 
 
 def _row(state: SessionState) -> dict:
-    p = state.profile
-    card = knowledge.cards().get(state.selected_product or "", {})
+    p, snap = state.profile, state.snapshot or {}
     lat = [x["total_first_audio_ms"] for x in state.latencies if x.get("total_first_audio_ms")]
     return {
         "timestamp_ist": now_ist().strftime("%Y-%m-%d %H:%M:%S"),
         "session_id": state.session_id, "name": state.lead.get("name"), "phone": state.lead.get("phone"),
-        "age": p.get("age"), "gender": p.get("gender"), "city": p.get("city"), "goal": p.get("goal"),
-        "dependents": p.get("dependents"), "income_band": p.get("income_band"),
-        "primary_need": p.get("primary_need"), "shortlisted": ";".join(state.shortlist),
-        "selected_insurer": card.get("insurer"), "selected_product": state.selected_product,
-        "objections": ";".join(state.objections_handled), "outcome": state.outcome,
-        "callback_time_ist": state.callback_time, "purchase_link": state.purchase_link,
-        "price_asked": state.price_asked, "summary": state.summary,
+        "age": p.get("age"), "gender": p.get("gender"), "employment_type": p.get("employment_type"),
+        "annual_income_inr": p.get("annual_income_inr"), "tobacco": p.get("tobacco"),
+        "max_cover": snap.get("max_cover"),
+        "eligible_products": ";".join(e["product_id"] for e in snap.get("eligible", [])),
+        "intents": "; ".join(state.intents), "discussed_products": ";".join(state.discussed_products),
+        "quoted_ranges": "; ".join(f"{q['product_id']}@{q['sum_assured']}:{q['range'][0]}-{q['range'][1]}"
+                                   for q in state.quoted),
+        "objections": "; ".join(state.objections), "outcome": state.outcome,
+        "callback_time_ist": state.callback_time, "purchase_link": state.purchase_link, "summary": state.summary,
         "turns": sum(1 for t in state.transcript if t["role"] == "user"),
+        "tool_calls": len(state.tool_calls),
         "avg_first_audio_ms": round(sum(lat) / len(lat)) if lat else None,
     }
 

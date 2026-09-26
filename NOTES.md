@@ -26,6 +26,9 @@
   static system blocks marked `cache_control`.
 
 ## Challenges
+- Sarvam credits: two full v1 eval runs (30 cases, ~11k input tokens per call, plus judge calls with reasoning)
+  used up the account's credits. From then on every call returned HTTP 402 `insufficient_quota_error`, which
+  showed up as parse fallbacks and failed cases late in the second run. Use `--no-judge` and `--only` for cheap runs.
 - Local dev machine: the only Python 3.11 installed is an x86_64 build and the arm64 Mac has no Rosetta,
   so local dev uses the system Python 3.9 (code keeps `from __future__ import annotations`, no 3.10+ syntax).
   Docker uses 3.11.
@@ -61,6 +64,31 @@ Prompt tuning left for the human review (not changed; `prompts/*.md` untouched e
 - CALLBACK sometimes says "scheduled" before the customer has confirmed the read-back.
 
 Prompt size: ~11k input tokens per turn (cards ~6k + process + sections); LLM 0.6–1.6 s per turn.
+
+## M2b — v2 redesign (intake in code, consult by the LLM)
+- Flow: GREET -> CONFIRM_IDENTITY -> INTAKE (age, gender, employment, income, tobacco; order decided in code)
+  -> `profile_snapshot()` (eligibility, max cover, price ranges; `data/knowledge/intake_rules.py`) -> CONSULT
+  (free conversation, tools) -> CLOSE / WRAP_UP -> END. v1 stage machine and `prompts/stages.md` removed.
+- Intake: code parses the customer's words **before** the LLM call (`app/agent/intake.py`: "80k per month",
+  "12-15 lakh" -> midpoint, "housewife" -> not_working, Hindi verb forms -> gender), so the reply always asks the
+  right next slot. The LLM's `extracted` only fills what code couldn't parse ("thirty"). If the LLM's extraction
+  completes intake, a second call opens the consult so the reply doesn't ask a stale question.
+- Tools (`app/agent/tools.py`): 9 tools, one registry, compact JSON with page/source refs. Errors come back to
+  the model as `{"ok": false, "error": ...}`; nothing raises. Max 2 tool rounds per turn, then a no-tools call.
+- Close guards in code: `book_callback` needs `customer_confirmed`, a future IST time within 14 days, **and** the
+  agent's previous reply must contain the read-back (day + hour); `end_conversation` can't claim a callback/link
+  that never happened; `share_purchase_link` errors while `purchase_url` is null.
+- Snapshot + claims records are in the prompt from CONSULT on, so price / claims / "which plan" turns need no tool.
+  The v1 topic router is now a prefetch: sections the customer's words name are preloaded for the product in focus.
+- Prompt caching: static block = persona, rails, process knowledge, objection guide, need_fit, cards, output rules;
+  dynamic block = phase guide, intake state, snapshot, claims, current turn (time, calendar, language, prefetch).
+- Sarvam tool calling: `SARVAM_TOOL_MODE=native` (OpenAI-style `tools`, documented for /v1/chat/completions) with
+  automatic fallback to a JSON protocol (`prompts/tools_json.md`) if the API rejects tools. **Not yet verified live**
+  — the Sarvam account ran out of credits (HTTP 402 `insufficient_quota_error`) during the v1 eval runs. Tool-call
+  error rate per provider is counted in `TOOL_ERRORS` and reported by the eval runner.
+- Voice: a filler line ("Ek second, main check karti hoon") is spoken in the background when a tool round starts
+  after the customer has already waited > 1.5 s.
+- Lead log: v2 columns; an older `data/leads.csv` with v1 columns is moved aside, not mixed.
 
 ## Latency / cost
 First smoke run (2026-09-25, from a laptop in India, single calls — not a benchmark):

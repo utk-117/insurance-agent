@@ -336,3 +336,67 @@ def need_fit_for(product_ids) -> dict:
     return {"needs": {n: {"label": v["label"], "discovery_goal": v["discovery_goal"]}
                       for n, v in nf["needs"].items() if n in used},
             "products": prods}
+
+
+# ---- v2: intake rules, pricing, process knowledge -----------------------------------------------
+
+@lru_cache(maxsize=None)
+def intake_rules():
+    """data/knowledge/intake_rules.py (reference implementation; imports `eligibility` from its own folder)."""
+    import sys
+    if str(K) not in sys.path:
+        sys.path.insert(0, str(K))
+    import intake_rules as ir  # noqa: E402
+    return ir
+
+
+@lru_cache(maxsize=None)
+def underwriting_rules() -> dict:
+    return _load("underwriting_rules.json")
+
+
+@lru_cache(maxsize=None)
+def pricing() -> dict:
+    return _load("pricing.json")
+
+
+def profile_snapshot(profile: dict) -> dict:
+    return intake_rules().profile_snapshot(profile)
+
+
+def _md_parts(text: str) -> dict:
+    """'## heading' -> section text (heading included)."""
+    parts = {}
+    for chunk in re.split(r"(?m)^(?=## )", text):
+        if chunk.startswith("## "):
+            parts[chunk.splitlines()[0][3:].strip()] = chunk.strip()
+    return parts
+
+
+# get_process_info topic -> (buying_process.md heading prefixes, insurer.md heading prefixes)
+PROCESS_TOPICS = {
+    "buying_steps": (["1. From interest"], []),
+    "medical_tests": (["1. From interest"], ["Medical tests"]),
+    "underwriting": (["1. From interest"], ["Medical tests"]),
+    "disclosure": (["2. Tobacco"], []),
+    "tobacco": (["2. Tobacco"], ["Medical tests"]),
+    "after_issue": (["3. After the policy"], []),
+    "free_look": (["3. After the policy"], []),
+    "claims": (["4. Death claims"], ["Death claims"]),
+    "documents": (["4. Death claims"], ["Death claims"]),
+    "contacts": ([], ["Death claims", "Other contacts"]),
+}
+
+
+def process_info(topic: str, insurer_slug: str | None = None) -> dict | None:
+    if topic not in PROCESS_TOPICS:
+        return None
+    bp_heads, ins_heads = PROCESS_TOPICS[topic]
+    bp = _md_parts(buying_process())
+    out = {"topic": topic, "source": "buying_process.md",
+           "text": "\n\n".join(v for k, v in bp.items() if any(k.startswith(h) for h in bp_heads))}
+    if insurer_slug and ins_heads:
+        notes = _md_parts((DATA / "insurers" / insurer_slug / "insurer.md").read_text())
+        out["insurer_notes"] = "\n\n".join(v for k, v in notes.items() if any(k.startswith(h) for h in ins_heads))
+        out["insurer_source"] = f"data/insurers/{insurer_slug}/insurer.md"
+    return out
