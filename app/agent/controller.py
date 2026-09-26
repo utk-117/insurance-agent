@@ -177,7 +177,8 @@ def _snapshot_text(state: SessionState) -> str:
     prof["annual_income"] = money(prof.pop("annual_income_inr", None)) or "not working"
     eligible = []
     for e in s["eligible"]:
-        item = {"product": _label(e["product_id"]), "type": e["type"]}
+        item = {"product": _label(e["product_id"]), "type": e["type"],
+                "purchase_page": bool(knowledge.cards()[e["product_id"]].get("purchase_url"))}
         if "quotes" in e:
             item["min_cover"] = money(e["min_cover"])
             item["price_ranges"] = []

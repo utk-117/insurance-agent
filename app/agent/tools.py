@@ -286,8 +286,10 @@ def share_purchase_link(state, product_id):
         return {"error": "Unknown product."}
     ev = actions.share_purchase_link(state, product_id)
     if not ev:
-        return {"error": "No purchase page is available for this product. Offer the advisor callback instead; the "
-                         "advisor will help them buy on the insurer's official website."}
+        return {"error": "No purchase page is available for this product yet. Still explain the next steps yourself, "
+                         "briefly: proposal form on the insurer's official website, KYC documents, possible medical "
+                         "tests arranged by the insurer, then the insurer's decision. Then offer the advisor call to "
+                         "help them complete the purchase and answer any doubts."}
     _note_products(state, product_id)
     state.events.append(ev)
     if state.outcome not in ("callback_scheduled", "purchase_link_and_callback"):
