@@ -151,6 +151,26 @@ class TestFlow(Base):
         self.assertFalse(r1["ended"])
         self.assertTrue(r2["ended"])
         self.assertEqual(s.outcome, "not_interested")
+        self.assertIn("Thank you for your time", r2["reply"])
+
+    def test_not_interested_mislabelled_by_model_during_intake(self):
+        # live bug (Sarvam): "not interested" twice during intake, labelled "answered", agent kept asking age
+        ask = {"reply": "May I know your age?", "reply_language": "en-IN", "extracted": {}, "intent": "answered"}
+        fake = FakeLLM(json_replies=[ask, ask])
+
+        async def convo():
+            s = c.new_session("Rahul", "9876543210")
+            s.phase = Phase.INTAKE
+            r1 = await c.handle_turn(s, "I'm not interested, thanks")
+            r2 = await c.handle_turn(s, "No, really not interested")
+            return s, r1, r2
+
+        s, r1, r2 = self.run_with(fake, convo())
+        self.assertFalse(r1["ended"])                   # one soft retry
+        self.assertIn("no obligation", r1["reply"])
+        self.assertTrue(r2["ended"])
+        self.assertEqual(s.outcome, "not_interested")
+        self.assertEqual(r2["reply"], "No problem at all, Rahul. Thank you for your time, and have a nice day!")
 
     def test_several_slots_then_gender_asked(self):
         fake = FakeLLM(json_replies=[{"reply": "And your gender?", "reply_language": "en-IN", "extracted": {},
@@ -299,6 +319,31 @@ class TestIntakeGuard(Base):
         snap = json.loads(c._snapshot_text(s))
         self.assertEqual(snap["eligible"], [])
         self.assertTrue(all(not o["products"] for o in snap["not_working_options"]))  # only "advisor" remains
+
+
+class TestGroundedLines(unittest.TestCase):
+    def test_across_plans_range_and_claims_say_lines(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.profile = {"age": 30, "gender": "male", "employment_type": "salaried", "annual_income_inr": 1_200_000,
+                     "tobacco": False}
+        c._finish_intake(s)
+        snap = json.loads(c._snapshot_text(s))
+        crore = next(a for a in snap["across_eligible_term_plans"] if a["cover"] == "₹1 crore")
+        lows = [p["price_ranges"][0]["indicative_premium"] for p in snap["eligible"] if p.get("price_ranges")]
+        self.assertTrue(crore["say"].startswith("Across the eligible term plans, ₹1 crore cover is about"))
+        self.assertTrue(lows)
+        claims = json.loads(c._claims_text(s))
+        self.assertIn("As per IRDAI data for FY 2024-25, SBI Life paid 95.26%", claims["say"]["SBI Life"])
+
+    def test_respect_no_hint(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.profile = {"age": 30, "gender": "male", "employment_type": "salaried", "annual_income_inr": 1_200_000,
+                     "tobacco": False}
+        c._finish_intake(s)
+        s.add("user", "This sounds too expensive for me")
+        s.add("agent", "...")
+        s.add("user", "No, I really can't afford it")
+        self.assertIn("said no twice", c._current_turn(s, "No, I really can't afford it"))
 
 
 class TestLanguage(unittest.TestCase):

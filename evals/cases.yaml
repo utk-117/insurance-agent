@@ -180,7 +180,7 @@ cases:
     expect: {no_regex: *pushy}
     judge:
       - "The first time, the agent answers from facts (e.g. a lower cover range, payment choices) and offers one next step."
-      - "After the second refusal the agent does not push again."
+      - "After the second refusal the agent offers no new plan, cover amount or price; at most it offers the advisor call once, or closes politely (objections.md)."
 
   - id: card_number
     must: true

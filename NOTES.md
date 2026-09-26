@@ -103,75 +103,77 @@ Prompt size: ~11k input tokens per turn (cards ~6k + process + sections); LLM 0.
 - Lead log: v2 columns; an older `data/leads.csv` with v1 columns is moved aside, not mixed.
 
 ## M3 — evals + swap test (26 Sep 2026)
-Setup: 24 v2 cases (`evals/cases.yaml`, CLAUDE.md "Eval cases (v2)"; case 21 is covered by `tests/test_tools.py`),
-code checks + an LLM judge. Same judge for every provider (`claude-opus-5`, effort medium) so scores compare.
-Agent models: Sarvam `sarvam-105b-conversations` (reasoning off) vs Claude `claude-opus-5` (effort low).
-Caveat: a Claude judge may favour Claude transcripts.
+Setup: 24 v2 cases (`evals/cases.yaml`, CLAUDE.md "Eval cases (v2)"; case 21 is covered by `tests/test_tools.py`
+TestCloseGuards), code checks + one LLM judge for every provider (`claude-opus-5`, effort medium) so scores
+compare. Caveat: a Claude judge may favour Claude transcripts. Agent models: Sarvam `sarvam-105b-conversations`
+(reasoning off) vs Claude `claude-haiku-4-5` (product owner's choice; Opus 5 was tried first: similar quality,
+2–6.7 s per LLM turn).
 
-**Round 1 (both providers, judged)** — `evals/results/sarvam-20260926-213619.json`, `anthropic-20260926-213743.json`
+**Final run** — `evals/results/sarvam-20260926-215809.json`, `anthropic-20260926-215932.json`
 
-| | Sarvam | Claude (opus-5) |
+| | Sarvam 105B | Claude Haiku 4.5 |
 |---|---|---|
-| must cases passed | 17/24 | 17/24 (case 22 lost to Anthropic credits running out) |
-| intake_clean | 0.89 | 1.00 |
+| must cases passed | **22/24** (23/24 after the consult-opening fix; 17 is flaky) | 18/24 |
+| intake_clean | 0.95 | 0.95 |
 | intent_understood | 1.00 | 1.00 |
-| fit_explained | 0.77 | 0.33 (asks follow-ups before recommending) |
-| grounded | 0.96 | 1.00 |
-| price_with_disclaimer | 0.92 | 0.80 |
-| moves_to_close | 0.30 | 0.20 (short scripts end before a close) |
-| objection_handled_once | 0.83 | 0.88 |
+| fit_explained | 0.86 | 0.38 (keeps asking follow-ups instead of recommending) |
+| grounded | 0.96 | 0.96 |
+| price_with_disclaimer | 0.64 | 0.17 (drops the indicative / underwriting disclaimer) |
+| moves_to_close | 0.47 | 0.22 |
+| objection_handled_once | 0.88 | 0.86 |
 | no_pressure | 1.00 | 1.00 |
-| respects_no | 0.75 | 0.67 |
-| **mean** | **0.82** | **0.76** |
-| tool calls in 24 cases | 18 (16 rounds) | 3 |
-| LLM turn latency (CLI, not benchmarked) | ~0.4–1.2 s | ~2–6.7 s |
+| respects_no | 0.67 | 0.67 |
+| **scorecard mean** | **0.83** | **0.69** |
+| tool calls in 24 cases (tool errors) | 17 (1: min-cover guard) | 2 (0) |
+| LLM p50 / p90 per turn (bench) | 484 / 766 ms | 2,100 / 2,424 ms |
 
-Failures and what was done:
-- Harness: judge crashed on `annual_premium: "1 lakh"` -> parsed with `money.parse_amount`.
-- **Sarvam asked income after "retired" / "housewife", then stored the customer's "no" as the tobacco answer**
-  (a question that was never asked). Fix in code: every intake reply's question must ask the NEXT slot and not
-  income/tobacco out of turn (`_asks_slot`); otherwise code asks the slot in the standard wording.
-- **At age 88 Claude said "savings plans are still possible"; Sarvam named two HDFC savings plans** — nothing is
-  eligible at 88. Fix: not-working options filtered to eligible products; `NO_ELIGIBLE` instruction when
-  SNAPSHOT.eligible is empty.
-- **Sarvam called `end_conversation` together with the consult-opening question** (session ended mid-sentence).
-  Fix: `end_conversation` only works when the customer's last message signals ending (bye / cut the call / not
-  interested / that's all …) or after a booking. Round 2 shows the guard catching it (2 occurrences).
-- Case scripts 4 and 7 ended one turn too early; case 14's assertion was stricter than CLAUDE.md -> fixed.
-- Prompts (both providers missed these): rail 2 now says to *offer* the advisor call when something isn't in the
-  brochure; objections.md: when a concern comes back, no new option / cover / price — advisor call once or close.
+Open failures:
+- Sarvam case 17 (too expensive, twice): after the second refusal it sometimes re-pitches a lower cover in words.
+  Code blocks the pricing tools after two refusals and the prompt says advisor-call-once-or-close; it passes on
+  some runs and fails on others.
+- Haiku: case 20 (never calls `book_callback` — keeps re-confirming), case 22 (asks for a cover amount instead
+  of sharing the page), 9 and 17 (no disclaimer; a made-up monthly figure), 10 and 16 (no advisor offer).
+  Haiku uses tools very rarely (2 calls in 24 cases). Tool-use tuning for Haiku or `claude-sonnet-5` would be the
+  next step if Claude is needed.
+**Recommendation: keep Sarvam as the default LLM** — better scorecard, more reliable tool use, and ~4x faster.
 
-**Round 2 (Sarvam, code checks only, after the fixes):** 22/24. Case 22 = Sarvam credits ran out mid-run (402).
-Red team: Sarvam said "your premium will rise as you get older" — a pressure line rail 11 forbids; still open.
-With a Sarvam judge (not comparable to round 1), cases 16 (offer advisor for out-of-brochure) and 17 (no second
-push after "can't afford") still fail on Sarvam after the prompt edits: Sarvam doesn't follow those reliably.
-
-Not done (both accounts out of credits): Claude re-run after the fixes, final judged scorecards for both, Claude
-latency benchmark.
+What the eval runs found and fixed (all in code unless marked):
+- Claude adapter: strict structured-output schemas (additionalProperties false, nullable enum -> anyOf); Haiku
+  skips `effort` (not supported on Haiku 4.5).
+- **Sarvam asked a housewife for income and stored her next "no" as the tobacco answer** -> every intake question
+  must ask the next slot (`_asks_slot`), else code asks it in the standard wording.
+- **At age 88 both models suggested savings plans** (none eligible) -> not-working options filtered to eligible
+  products; `NO_ELIGIBLE` instruction.
+- **Sarvam hung up while asking the consult-opening question** -> `end_conversation` needs an end signal from the
+  customer (or a completed booking).
+- Blended price ranges ("₹11,500–18,500" across two plans) -> snapshot carries a code-computed "across eligible
+  term plans" range with a ready "say" line.
+- Rounded, multi-year claims answers -> CLAIMS RECORD / get_claims_record give one ready sentence per insurer for
+  the latest FY (by amount + by number + "as per IRDAI data").
+- Second "no" in intake ignored (model labelled it "answered") -> not-interested phrases count in code; first no
+  gets a fixed soft-retry line, second no a fixed goodbye.
+- Pushing after two refusals -> code blocks pricing tools and adds a RESPECT_NO instruction.
+- Prompts (said at the time): rail 2 offers the advisor for out-of-brochure questions; rail 11 names the
+  "premiums rise as you get older" line; objections.md no second push; phases.md CONSULT: use the "say" lines,
+  offer the advisor when something isn't covered; CONSULT_OPEN: no more profile questions.
+- Evals: judge crash on worded amounts; case scripts 4 / 7 one turn short; Hinglish prefix answers the new gender
+  confirmation; case 14 matched to CLAUDE.md; case 17's second assertion aligned to objections.md.
 
 ## Latency / cost
 `scripts/bench.py` — fixed audio clips + 4 fixed turns through the real voice pipeline (STT -> controller ->
-first-sentence TTS), 5 runs, from a laptop in India (`data/bench/bench-20260926-214631.csv`):
+first-sentence TTS), 5 runs per LLM, STT/TTS = Sarvam, from a laptop in India
+(`data/bench/bench-20260926-220412.csv`):
 
-| sarvam (all three) | p50 ms | p90 ms |
+| ms (p50 / p90) | Sarvam LLM | Claude Haiku 4.5 LLM |
 |---|---|---|
-| STT (saaras:v3) | 242 | 306 |
-| LLM (sarvam-105b-conversations) | 466 | 833 |
-| TTS first chunk (bulbul:v3) | 2,500 | 3,847 |
-| **total to first audio** | **3,601** | **4,476** |
+| STT (saaras:v3) | 244 / 332 | 328 / 386 |
+| LLM | 484 / 766 | 2,100 / 2,424 |
+| TTS first chunk (bulbul:v3) | 2,140 / 3,757 | 2,087 / 3,722 |
+| **total to first audio** | **2,856 / 4,684** | **4,522 / 6,164** |
 
-TTS of the first chunk dominates (~70% of time to first audio), not the LLM. Next step for M4: make the first
-chunk short (first clause only) and stream the rest. Price/claims turns are slower (~4.0–4.4 s) than intake /
-detail turns (~2.1 s) because their first sentence is longer. ~15.7k input tokens per LLM call.
-
-First smoke run (2026-09-25, from a laptop in India, single calls — not a benchmark):
-| call | ms |
-|---|---|
-| TTS bulbul:v3, 1 Hinglish sentence (~60 chars), mp3 | ~1,280 |
-| STT saaras:v3 translit, same clip | ~500–590 |
-| LLM sarvam-105b-conversations, tiny JSON reply | ~510 |
-
-Proper p50/p90 comes from `scripts/bench.py` in M3.
+TTS of the first chunk is the biggest stage for Sarvam (~75% of time to first audio). Next step for M4: make
+the first spoken chunk short (first clause only) so audio starts sooner. ~16k input tokens per LLM call
+(Claude: ~10.6k of them served from the prompt cache).
 
 ## Router miss rate
 _TBD (M2/M3)._

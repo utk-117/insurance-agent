@@ -192,7 +192,17 @@ def _snapshot_text(state: SessionState) -> str:
         else:
             item["pricing"] = e.get("pricing")
         eligible.append(item)
+    across = {}
+    for e in s["eligible"]:
+        for q in e.get("quotes", []):
+            lo, hi = q["annual_premium_range"]
+            a = across.setdefault(q["sum_assured"], [lo, hi])
+            a[0], a[1] = min(a[0], lo), max(a[1], hi)
     compact = {"profile": prof, "max_cover": money(s["max_cover"]) if s["max_cover"] else None,
+               "across_eligible_term_plans": [
+                   {"cover": money(sa), "indicative_premium": money_range(lo, hi),
+                    "say": f"Across the eligible term plans, {money(sa)} cover is about {money_range(lo, hi)}."}
+                   for sa, (lo, hi) in sorted(across.items())] or None,
                "max_cover_rule": s["max_cover_rule"], "eligible": eligible,
                "excluded": [{"product": _label(x["product_id"]), "reason": words_in_text(x["reason"], bare=True)}
                             for x in s["excluded"]],
@@ -220,7 +230,19 @@ def _claims_text(state: SessionState) -> str:
     insurers = [knowledge.cards()[e["product_id"]]["insurer"] for e in state.snapshot["eligible"]]
     rows = knowledge.claims_record(list(dict.fromkeys(insurers)))
     meta = json.loads((knowledge.K / "claims_history.json").read_text())["_meta"]
-    return json.dumps({"how_to_speak": meta["how_to_speak"], "rows": rows}, ensure_ascii=False) if rows else "(none)"
+    return json.dumps({"how_to_speak": meta["how_to_speak"], "say": claims_lines(rows), "rows": rows},
+                      ensure_ascii=False) if rows else "(none)"
+
+
+def claims_lines(rows: list) -> dict:
+    """One ready sentence per insurer for the latest FY (the model rounded and averaged years on its own)."""
+    out = {}
+    for r in rows:  # rows are newest first per insurer
+        if r["insurer"] not in out:
+            out[r["insurer"]] = (f"As per IRDAI data for FY {r['fy']}, {r['insurer']} paid {r['paid_pct_by_amount']}% "
+                                 f"of the amount claimed on death claims and {r['paid_pct_by_number']}% of the claims "
+                                 "by number. Past record doesn't guarantee any individual claim.")
+    return out
 
 
 def _intake_text(state: SessionState, parsed: dict) -> str:
@@ -278,6 +300,8 @@ def _current_turn(state: SessionState, text: str = "") -> str:
             extra.append(pre)
         if state.snapshot and not state.snapshot["eligible"]:
             extra.append(snippet("NO_ELIGIBLE"))
+        if said_no_twice(state):
+            extra.append(snippet("RESPECT_NO"))
     return snippet("CURRENT_TURN", now_ist=_fmt_time(now), week=_week(now), language=customer_language(state),
                    extra="\n".join(extra))
 
@@ -369,6 +393,23 @@ async def _json_call(state: SessionState, system: list, schema: dict):
     return d, r["provider_ms"]
 
 
+REFUSAL = re.compile(r"\b(not interested|no thanks|no thank you|can'?t afford|cannot afford|too expensive|"
+                     r"not now|don'?t want|nahi chahiye|interested nahi|afford nahi|mehenga|budget nahi|"
+                     r"really not|abhi nahi|no,? really)\b", re.I)
+NOT_INTERESTED = re.compile(r"\b(not interested|no thanks|no thank you|interested nahi|nahi chahiye|don'?t call|"
+                            r"not now|abhi nahi|leave it|mat karo)\b", re.I)
+
+
+def said_no_twice(state: SessionState) -> bool:
+    users = [t["text"] for t in state.transcript if t["role"] == "user"]
+    return len(users) >= 2 and bool(REFUSAL.search(users[-1])) and bool(REFUSAL.search(users[-2]))
+
+
+def _soft_retry_reply(state: SessionState) -> str:
+    english = customer_language(state) in ("English", "unknown")
+    return snippet("SOFT_RETRY_EN" if english else "SOFT_RETRY_HI", lead=state.lead.get("name"))
+
+
 def _not_interested(state: SessionState):
     """One soft retry, then end (code-side, so a no is always respected)."""
     if state.soft_retry_used:
@@ -381,10 +422,18 @@ async def _identity_turn(state: SessionState, text: str) -> tuple:
     if d is None:
         return None, None, ms
     intent = d.get("intent")
+    if intent not in ("wrong_person",) and NOT_INTERESTED.search(text):
+        intent = "not_interested"  # the model sometimes labels a clear no as "answered"
     if intent == "wrong_person" or (intent == "confirm_no" and NO_RE.match(text)):
         state.outcome, state.phase = "wrong_person", Phase.END
     elif intent == "not_interested":
         _not_interested(state)
+        english = customer_language(state) in ("English", "unknown")
+        if state.phase == Phase.END:
+            return (snippet("BYE_NOT_INTERESTED_EN" if english else "BYE_NOT_INTERESTED_HI",
+                            lead=state.lead.get("name")), "en-IN" if english else "hi-IN", ms)
+        state.phase = Phase.INTAKE  # a yes to the soft retry continues straight into intake
+        return _soft_retry_reply(state), "en-IN" if english else "hi-IN", ms
     elif intent != "unclear" or YES_RE.match(text):
         state.phase = Phase.INTAKE
     return d["reply"], d["reply_language"], ms
@@ -458,10 +507,18 @@ async def _intake_turn(state: SessionState, text: str, on_tool_round=None) -> tu
         return None, None, ms, []
     ex = d.get("extracted") if isinstance(d.get("extracted"), dict) else {}
     _apply_slots(state, {s: intake.clean_llm_value(s, ex.get(s)) for s in intake.SLOTS})
-    if d.get("intent") == "wrong_person":
+    intent = d.get("intent")
+    if intent != "wrong_person" and NOT_INTERESTED.search(text):
+        intent = "not_interested"
+    if intent == "wrong_person":
         state.outcome, state.phase = "wrong_person", Phase.END
-    elif d.get("intent") == "not_interested":
+    elif intent == "not_interested":
         _not_interested(state)
+        english = customer_language(state) in ("English", "unknown")
+        if state.phase == Phase.END:  # second no: close with a proper goodbye, whatever the model wrote
+            return (snippet("BYE_NOT_INTERESTED_EN" if english else "BYE_NOT_INTERESTED_HI",
+                            lead=state.lead.get("name")), "en-IN" if english else "hi-IN", ms, [])
+        return _soft_retry_reply(state), "en-IN" if english else "hi-IN", ms, []  # first no: one gentle retry
     if state.phase == Phase.INTAKE and not intake.missing(state.profile):
         # the LLM caught the last slot that code missed: its reply asked the wrong thing, so open the consult now
         _finish_intake(state)

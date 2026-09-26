@@ -167,7 +167,8 @@ def get_premium_estimate(state, product_id, cover=None, sum_assured=None):
     cap = (state.snapshot or {}).get("max_cover")
     if cap and sa > cap:
         out["above_max_cover"] = (f"{money(sa)} is above the customer's indicative max cover of {money(cap)}; the "
-                                  "insurer decides higher cover with income proof — say so.")
+                                  "insurer decides higher cover with income proof — say so, and offer the advisor "
+                                  "call to check it.")
     _note_products(state, product_id)
     state.quoted.append({"product_id": product_id, "sum_assured": sa, "range": [lo, hi]})
     return out
@@ -200,7 +201,9 @@ def get_claims_record(state, insurer_slug):
     if not rows:
         return {"error": f"Unknown insurer {insurer_slug}."}
     meta = json.loads((knowledge.K / "claims_history.json").read_text())["_meta"]
-    return {"rows": rows, "how_to_speak": meta["how_to_speak"], "source": meta["source"]["publication"]}
+    from app.agent.controller import claims_lines
+    return {"say": next(iter(claims_lines(rows).values())), "rows": rows, "how_to_speak": meta["how_to_speak"],
+            "source": meta["source"]["publication"]}
 
 
 def compare_products(state, product_ids):
@@ -329,11 +332,18 @@ IMPL = {"get_product_info": get_product_info, "get_premium_estimate": get_premiu
         "end_conversation": end_conversation}
 
 
+PRICING_TOOLS = {"get_premium_estimate", "get_savings_illustration", "compare_products"}
+
+
 def run(state: SessionState, name: str, args: dict) -> dict:
     """Run one tool call; errors come back as {"ok": false, "error": ...} for the model to act on."""
+    from app.agent.controller import said_no_twice
     t0 = time.perf_counter()
     fn = IMPL.get(name)
-    if fn is None:
+    if name in PRICING_TOOLS and said_no_twice(state):
+        res = {"error": "The customer has said no twice: don't quote another option. Acknowledge it, then offer "
+                        "the advisor call once or close politely."}
+    elif fn is None:
         res = {"error": f"Unknown tool {name}. Tools: {sorted(IMPL)}."}
     else:
         try:

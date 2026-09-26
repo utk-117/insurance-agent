@@ -53,14 +53,18 @@ class AnthropicLLM:
 
     def __init__(self):
         self.model = (os.getenv("LLM_MODEL") if os.getenv("LLM_PROVIDER") == "anthropic" else None) \
-            or os.getenv("ANTHROPIC_MODEL", "claude-opus-5")
+            or os.getenv("ANTHROPIC_MODEL", "claude-haiku-4-5")
         self.effort = os.getenv("ANTHROPIC_EFFORT", "low")  # low keeps voice latency down
         self.max_tokens = int(os.getenv("ANTHROPIC_MAX_TOKENS", "4096"))
         self.client = anthropic.AsyncAnthropic()
 
+    @property
+    def supports_effort(self) -> bool:
+        return not self.model.startswith("claude-haiku")  # Haiku 4.5 rejects output_config.effort
+
     async def _call(self, system, messages, schema):
         output_config = {"format": {"type": "json_schema", "schema": strict_schema(schema)}}
-        if self.effort:
+        if self.effort and self.supports_effort:
             output_config["effort"] = self.effort
         with timed() as t:
             try:
@@ -108,7 +112,7 @@ class AnthropicLLM:
     async def chat_with_tools(self, system, messages: list, tools: list, allow_tools: bool = True) -> dict:
         kwargs = dict(model=self.model, max_tokens=self.max_tokens, system=system_blocks(system),
                       messages=_to_anthropic(messages))
-        if self.effort:
+        if self.effort and self.supports_effort:
             kwargs["output_config"] = {"effort": self.effort}
         if tools:
             kwargs["tools"] = [{"name": t["name"], "description": t["description"], "input_schema": t["parameters"]}

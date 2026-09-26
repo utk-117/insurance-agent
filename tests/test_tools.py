@@ -85,6 +85,13 @@ class TestInfoTools(unittest.TestCase):
         self.assertTrue(p["ok"] and p["text"] and p["insurer_notes"])
         self.assertFalse(tools.run(self.s, "get_process_info", {"topic": "astrology"})["ok"])
 
+    def test_no_quotes_after_two_refusals(self):
+        self.s.add("user", "This sounds too expensive for me")
+        self.s.add("user", "No, I really can't afford it")
+        r = tools.run(self.s, "get_premium_estimate", {"product_id": "sbi-smart-shield-plus", "cover": "50 lakh"})
+        self.assertFalse(r["ok"])
+        self.assertIn("said no twice", r["error"])
+
     def test_bad_calls_never_raise(self):
         self.assertFalse(tools.run(self.s, "nope", {})["ok"])
         self.assertFalse(tools.run(self.s, "get_claims_record", {"wrong_arg": 1})["ok"])
