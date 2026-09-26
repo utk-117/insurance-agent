@@ -29,7 +29,7 @@ PROMPTS = pathlib.Path(__file__).resolve().parents[2] / "prompts"
 MAX_TOOL_ROUNDS = int(os.getenv("MAX_TOOL_ROUNDS", "2"))
 HISTORY_MSGS = int(os.getenv("HISTORY_MSGS", "20"))
 LANGS = ["en-IN", "hi-IN", "bn-IN", "gu-IN", "kn-IN", "ml-IN", "mr-IN", "od-IN", "pa-IN", "ta-IN", "te-IN"]
-CLOSE_TOOLS = {"book_callback", "share_purchase_link", "end_conversation"}
+CLOSE_TOOLS = {"book_callback", "send_purchase_link", "end_conversation"}
 STATIC_CHUNKS = ("_intro", "How you speak", "How you sell", "Rails", "PROCESS KNOWLEDGE", "OBJECTION GUIDE",
                  "NEED FIT", "PRODUCT CARDS", "Output")
 
@@ -177,8 +177,7 @@ def _snapshot_text(state: SessionState) -> str:
     prof["annual_income"] = money(prof.pop("annual_income_inr", None)) or "not working"
     eligible = []
     for e in s["eligible"]:
-        item = {"product": _label(e["product_id"]), "type": e["type"],
-                "purchase_page": bool(knowledge.cards()[e["product_id"]].get("purchase_url"))}
+        item = {"product": _label(e["product_id"]), "type": e["type"]}
         if "quotes" in e:
             item["min_cover"] = money(e["min_cover"])
             item["price_ranges"] = []

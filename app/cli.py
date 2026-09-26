@@ -19,8 +19,8 @@ OUT = pathlib.Path(__file__).resolve().parent.parent / "data" / "transcripts"
 def show(res, debug, state):
     print(f"\nAsha: {res['reply']}")
     for ev in res["events"]:
-        if ev["type"] == "purchase_link":
-            print(f"   [card] {ev['insurer']} {ev['name']} -> {ev['url']}")
+        if ev["type"] == "purchase_link_sent":
+            print(f"   [purchase link to send by message] {ev['insurer']} {ev['name']}")
         elif ev["type"] == "callback_booked":
             print(f"   [callback booked] {ev['callback_time_ist']}")
         elif ev["type"] == "end":

@@ -1,4 +1,6 @@
 """M1: eligibility / shortlist / router / section loading.  python -m unittest discover -s tests -v"""
+import os
+os.environ["SHEET_ID"] = ""  # tests never write to the real Google Sheet (load_dotenv won't override)
 import subprocess
 import sys
 import unittest

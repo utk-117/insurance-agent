@@ -158,7 +158,7 @@ class SarvamLLM:
             calls.append({"id": f"call_{i}", "name": c["name"],
                           "args": c.get("args") if isinstance(c.get("args"), dict) else {}})
         if not allow_tools:
-            calls = [c for c in calls if c["name"] in ("book_callback", "share_purchase_link", "end_conversation")]
+            calls = [c for c in calls if c["name"] in ("book_callback", "send_purchase_link", "end_conversation")]
         reply = d.get("reply")
         return {"reply": reply.strip() if isinstance(reply, str) and reply.strip() else None, "tool_calls": calls,
                 "raw": None, "provider_ms": r["provider_ms"], "input_tokens": r["input_tokens"],

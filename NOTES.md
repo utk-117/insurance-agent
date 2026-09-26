@@ -189,6 +189,18 @@ the first spoken chunk short (first clause only) so audio starts sooner. ~16k in
 - Leads: on Cloud Run the CSV lead log lives on the instance's disk and is lost on restart; every session's full
   record is also logged as `session_end` in Cloud Logging. Google Sheets is M5.
 
+## M5 — integrations (27 Sep 2026)
+- **Purchase link by message, not on screen** (product-owner decision): once the customer has decided, Asha calls
+  `send_purchase_link` without asking again and says she'll send a message with the purchase link to the number
+  they're talking on. Nothing is shown on screen and no URL is stored in the app: the lead row's `purchase_link`
+  column says which plan's link to send (e.g. "HDFC Life Click 2 Protect Supreme [hdfc-c2p-supreme] - send by
+  message"), and the sales team / a messaging system sends it. `cards.json.purchase_url` is no longer used.
+- **Google Sheets**: every lead row goes to the CSV and, with SHEET_ID set, is upserted (by session_id) into the
+  Sheet's "leads" tab from a background thread with retries. On Cloud Run it authenticates as the service's own
+  service account (no key file); the Sheet must be shared with that account as Editor. Locally, Sheets writes need
+  GOOGLE_SERVICE_ACCOUNT_JSON (or ADC with the Sheets scope); otherwise they fail quietly and the CSV has the row.
+- Latency panel and state panel: done in M4.
+
 ## Router miss rate
 _TBD (M2/M3)._
 

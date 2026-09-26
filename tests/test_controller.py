@@ -1,4 +1,6 @@
 """M2b: v2 phase controller end to end with a scripted fake LLM (no network)."""
+import os
+os.environ["SHEET_ID"] = ""  # tests never write to the real Google Sheet (load_dotenv won't override)
 import asyncio
 import json
 import pathlib

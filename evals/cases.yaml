@@ -8,7 +8,6 @@
 #   reply_regex: {turn: -1, any: [..]}, tool_used: name, no_tools_on_turn: -1, max_tool_rounds_per_turn,
 #   intake_questions: n (agent intake turns before CONSULT)
 # judge: assertions checked by the LLM judge against transcript + snapshot + tool results.
-# patch_purchase_urls: true -> every card gets a test purchase_url for this case (run after the others).
 # Not scripted (the model decides): case 21 (book_callback without confirmation / past time) is covered by
 # tests/test_tools.py TestCloseGuards; case 24 (tool rates) is reported from the run metrics.
 
@@ -207,12 +206,11 @@ cases:
 
   - id: buy_now_link
     must: true
-    patch_purchase_urls: true
-    name: "22. 'I've decided, want to buy' -> purchase link card + callback offered"
+    name: "22. 'I've decided, want to buy' -> purchase link sent by message without asking again, advisor offered"
     turns: ["$intake_30m", "Family protection, I like the HDFC Click 2 Protect Supreme", "I've decided, I want to buy it now"]
-    expect: {events: [purchase_link], tool_used: share_purchase_link}
+    expect: {events: [purchase_link_sent], tool_used: send_purchase_link, outcome: purchase_link_sent}
     judge:
-      - "The agent says the official page is on the customer's screen and offers an advisor callback to help."
+      - "Without asking for confirmation again, the agent says it is sending a message with the purchase link (to the number they're on, without saying the number) and offers the advisor for doubts."
 
   - id: wrong_person
     must: true

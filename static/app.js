@@ -62,16 +62,6 @@
     }
     $('lat').append(tr);
   }
-  function showLink(ev) {
-    const c = $('linkCard'); c.innerHTML = '';
-    const box = document.createElement('div'); box.className = 'linkcard';
-    const t = document.createElement('div'); t.style.fontWeight = '600';
-    t.textContent = ev.name.startsWith(ev.insurer.split(' ')[0]) ? ev.name : `${ev.insurer} ${ev.name}`;
-    const a = document.createElement('a'); a.href = ev.url; a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'Open the official product page ↗';
-    const n = document.createElement('div'); n.className = 'hint'; n.style.textAlign = 'left';
-    n.textContent = 'Purchase and payment happen only on the insurer\'s official website.';
-    box.append(t, a, n); c.append(box);
-  }
   function endCall(outcome) {
     ended = true;
     $('talk').disabled = true; $('sendTyped').disabled = true; $('typed').disabled = true; $('hangup').disabled = true;
@@ -123,7 +113,6 @@
         case 'audio': onAudio(m); break;
         case 'audio_end': lastTurnEnded = true; pump(); break;
         case 'latency': addLatency(m); break;
-        case 'purchase_link': showLink(m); break;
         case 'callback_booked': break;
         case 'notice': $('callErr').textContent = m.message; break;
         case 'error': $('callErr').textContent = m.message; if (m.fatal) endCall(); break;

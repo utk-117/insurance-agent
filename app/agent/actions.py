@@ -6,14 +6,12 @@ from app.agent import knowledge
 from app.agent.state import SessionState, now_ist
 
 
-def share_purchase_link(state: SessionState, product_id: str) -> dict | None:
-    """UI event for the product's official page, or None if purchase_url is not filled in."""
-    card = knowledge.cards().get(product_id)
-    if not card or not card.get("purchase_url"):
-        return None
-    state.purchase_link = card["purchase_url"]
-    return {"type": "purchase_link", "product_id": product_id, "name": card["name"],
-            "insurer": card["insurer"], "url": card["purchase_url"]}
+def queue_purchase_link(state: SessionState, product_id: str) -> dict:
+    """Record that this plan's purchase link must be sent to the customer by message (the sales team / messaging
+    system sends it from the lead sheet). Nothing is shown on screen and no URL is stored here."""
+    card = knowledge.cards()[product_id]
+    state.purchase_link = f"{card['insurer']} {card['name']} [{product_id}] - send by message"
+    return {"type": "purchase_link_sent", "product_id": product_id, "name": card["name"], "insurer": card["insurer"]}
 
 
 def _row(state: SessionState) -> dict:

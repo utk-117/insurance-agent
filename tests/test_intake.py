@@ -1,4 +1,6 @@
 """M2b: intake parsing + profile_snapshot()."""
+import os
+os.environ["SHEET_ID"] = ""  # tests never write to the real Google Sheet (load_dotenv won't override)
 import unittest
 
 from app.agent import intake, knowledge

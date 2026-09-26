@@ -6,7 +6,7 @@ WebSocket protocol
                     {"type":"text","text":"..."}           typed turn (fallback / testing)
                     {"type":"hangup"}
   server -> client  transcript · state · audio {turn,seq,mime,data} · audio_end · latency ·
-                    purchase_link · callback_booked · end · error · notice
+                    purchase_link_sent · callback_booked · end · error · notice
 """
 from __future__ import annotations
 

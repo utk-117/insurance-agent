@@ -19,7 +19,7 @@ e.g. the conversation ended before intake finished):
 - grounded: every product, price and claims claim is traceable to the SOURCE DOCUMENTS / SNAPSHOT / tool results.
 - price_with_disclaimer: every price is a range from the data, with the indicative / final-after-underwriting
   disclaimer (null if no price was given).
-- moves_to_close: the agent offered the advisor call (or the purchase page, if the customer had decided) at a
+- moves_to_close: the agent offered the advisor call (or sent the purchase link by message, if the customer had decided) at a
   sensible moment.
 - objection_handled_once: each concern is handled once, without pushing a second time (null if none).
 - no_pressure: no false urgency, fear lines, or disparaging other insurers or the customer's existing cover.

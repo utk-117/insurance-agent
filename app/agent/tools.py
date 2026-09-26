@@ -3,7 +3,7 @@
   TOOLS            -> list of {name, description, parameters (JSON schema)}; adapters convert to their format
   run(state, name, args) -> {"ok": bool, ...result or "error"}; never raises for bad model input
 Every result is compact JSON with page / source references. The close tools (book_callback,
-share_purchase_link, end_conversation) are the code guards of Phase 3.
+send_purchase_link, end_conversation) are the code guards of Phase 3.
 """
 from __future__ import annotations
 
@@ -89,9 +89,9 @@ def tool_specs() -> list:
              "note": {"type": "string", "description": "one line for the advisor"},
              "customer_confirmed": {"type": "boolean"}},
              "required": ["datetime_iso", "customer_confirmed"]}},
-        {"name": "share_purchase_link",
-         "description": "Show the product's official purchase page on the customer's screen. Only when they say "
-                        "they have decided to buy.",
+        {"name": "send_purchase_link",
+         "description": "Send the customer a message with the purchase link for this plan (nothing is shown on "
+                        "screen). Call it as soon as they say they've decided to buy — don't ask first.",
          "parameters": {"type": "object", "properties": {"product_id": _pid()}, "required": ["product_id"]}},
         {"name": "end_conversation",
          "description": "End the call. Call it once, when the customer wants to stop or the conversation is over. "
@@ -281,22 +281,23 @@ def book_callback(state, datetime_iso, customer_confirmed, product_ids=None, not
             "number": "the number the customer is talking on (don't say it)", "note": note}
 
 
-def share_purchase_link(state, product_id):
+def send_purchase_link(state, product_id):
     if product_id not in knowledge.cards():
         return {"error": "Unknown product."}
-    ev = actions.share_purchase_link(state, product_id)
-    if not ev:
-        return {"error": "No purchase page is available for this product yet. Still explain the next steps yourself, "
-                         "briefly: proposal form on the insurer's official website, KYC documents, possible medical "
-                         "tests arranged by the insurer, then the insurer's decision. Then offer the advisor call to "
-                         "help them complete the purchase and answer any doubts."}
+    if state.snapshot and product_id not in _eligible_ids(state):
+        return {"error": "This plan is not in SNAPSHOT.eligible for this customer; don't send it."}
+    ev = actions.queue_purchase_link(state, product_id)
     _note_products(state, product_id)
     state.events.append(ev)
     if state.outcome not in ("callback_scheduled", "purchase_link_and_callback"):
         state.outcome = "purchase_link_sent"
     state.phase = Phase.CLOSE
-    return {"shown": True, "product": ev["name"], "insurer": ev["insurer"],
-            "next": "Tell them the official page is on their screen, then offer an advisor callback."}
+    c = knowledge.cards()[product_id]
+    return {"sent": True, "product": f"{c['insurer']} {c['name']}",
+            "say": "Tell them you'll send a message with the purchase link for this plan to the number they're "
+                   "talking on (say 'I'll send', not 'I've sent'; never say the number). If you haven't yet, briefly explain the next steps (proposal "
+                   "form on the insurer's official website, KYC, possible medical tests, the insurer's decision), "
+                   "then offer the advisor call for any doubts."}
 
 
 END_SIGNAL = re.compile(
@@ -330,7 +331,7 @@ def end_conversation(state, outcome, goodbye=None, summary=None):
 IMPL = {"get_product_info": get_product_info, "get_premium_estimate": get_premium_estimate,
         "get_savings_illustration": get_savings_illustration, "get_claims_record": get_claims_record,
         "compare_products": compare_products, "get_process_info": get_process_info,
-        "book_callback": book_callback, "share_purchase_link": share_purchase_link,
+        "book_callback": book_callback, "send_purchase_link": send_purchase_link,
         "end_conversation": end_conversation}
 
 

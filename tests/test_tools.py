@@ -1,4 +1,6 @@
-"""M2b: every consult tool, incl. the Phase 3 guards (book_callback, share_purchase_link, end_conversation)."""
+"""M2b: every consult tool, incl. the Phase 3 guards (book_callback, send_purchase_link, end_conversation)."""
+import os
+os.environ["SHEET_ID"] = ""  # tests never write to the real Google Sheet (load_dotenv won't override)
 import pathlib
 import tempfile
 import unittest
@@ -161,14 +163,16 @@ class TestCloseGuards(unittest.TestCase):
         self.assertIn("callback_scheduled", rows)
         self.assertIn(self.s.session_id, rows)
 
-    def test_purchase_link(self):
-        r = tools.run(self.s, "share_purchase_link", {"product_id": "sbi-smart-shield-plus"})
-        self.assertFalse(r["ok"])  # purchase_url is null in cards.json
-        with mock.patch.dict(knowledge.cards()["hdfc-c2p-supreme"], {"purchase_url": "https://example.com/c2p"}):
-            r = tools.run(self.s, "share_purchase_link", {"product_id": "hdfc-c2p-supreme"})
+    def test_purchase_link_sent_by_message(self):
+        r = tools.run(self.s, "send_purchase_link", {"product_id": "hdfc-c2p-supreme"})  # no URL needed
         self.assertTrue(r["ok"])
+        self.assertIn("message", r["say"])
         self.assertEqual(self.s.outcome, "purchase_link_sent")
-        self.assertEqual(self.s.events[-1]["type"], "purchase_link")
+        self.assertEqual(self.s.events[-1]["type"], "purchase_link_sent")
+        self.assertIn("HDFC Life Click 2 Protect Supreme", self.s.purchase_link)  # what the sales team sends
+        self.assertEqual(self.s.phase, Phase.CLOSE)
+        bad = tools.run(self.s, "send_purchase_link", {"product_id": "icici-assured-savings"})
+        self.assertFalse(bad["ok"])  # not eligible for this customer
 
     def test_end_conversation_needs_the_customer_to_end(self):
         # live bug: the model asked the open consult question AND called end_conversation
