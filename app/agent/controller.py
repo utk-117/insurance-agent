@@ -21,6 +21,7 @@ from functools import lru_cache
 
 from app.adapters.base import LLMParseError, ProviderError, get_llm
 from app.agent import actions, intake, knowledge, tools
+from app.agent.money import money, money_range, parse_amount, words_in_text
 from app.agent.state import IST, Phase, SessionState, now_ist
 
 log = logging.getLogger("controller")
@@ -149,22 +150,33 @@ def _label(pid):
 
 
 def _snapshot_text(state: SessionState) -> str:
+    """The snapshot as the LLM sees it: every rupee amount already in words (it misreads raw integers by 10x)."""
     s = state.snapshot
     if not s:
         return "(after intake)"
+    prof = dict(s["profile"])
+    prof["annual_income"] = money(prof.pop("annual_income_inr", None)) or "not working"
     eligible = []
     for e in s["eligible"]:
         item = {"product": _label(e["product_id"]), "type": e["type"]}
         if "quotes" in e:
-            item["min_cover"] = e["min_cover"]
-            item["quotes"] = [{k: q[k] for k in ("sum_assured", "annual_premium_range", "salaried_first_year_discount",
-                                                  "note") if q.get(k) is not None} for q in e["quotes"]]
+            item["min_cover"] = money(e["min_cover"])
+            item["price_ranges"] = []
+            for q in e["quotes"]:
+                pr = {"cover": money(q["sum_assured"]),
+                      "indicative_premium": money_range(*q["annual_premium_range"])}
+                if q.get("salaried_first_year_discount"):
+                    pr["salaried_discount"] = f"{q['salaried_first_year_discount'] * 100:g}% off the first year only"
+                if q.get("note"):
+                    pr["note"] = q["note"]
+                item["price_ranges"].append(pr)
         else:
             item["pricing"] = e.get("pricing")
         eligible.append(item)
-    compact = {"profile": s["profile"], "max_cover": s["max_cover"], "max_cover_rule": s["max_cover_rule"],
-               "eligible": eligible,
-               "excluded": [{"product": _label(x["product_id"]), "reason": x["reason"]} for x in s["excluded"]],
+    compact = {"profile": prof, "max_cover": money(s["max_cover"]) if s["max_cover"] else None,
+               "max_cover_rule": s["max_cover_rule"], "eligible": eligible,
+               "excluded": [{"product": _label(x["product_id"]), "reason": words_in_text(x["reason"], bare=True)}
+                            for x in s["excluded"]],
                "not_working_options": s.get("not_working_options"), "disclaimer": s["disclaimer"]}
     return json.dumps(compact, ensure_ascii=False)
 
@@ -215,8 +227,13 @@ def _current_turn(state: SessionState, text: str = "") -> str:
         dt = parse_time_text(text)
         if dt:
             extra.append(snippet("RESOLVED_TIME", when=f"{dt:%A, %d %B at %I:%M %p}", iso=dt.isoformat()))
+        amount = parse_amount(text) if not dt else None
+        if amount:
+            extra.append(snippet("RESOLVED_AMOUNT", amount=money(amount)))
         if state.quoted:
-            extra.append(snippet("QUOTED", quoted=json.dumps(state.quoted[-6:])))
+            quoted = "; ".join(f"{_label(q['product_id'])}: {money(q['sum_assured'])} cover -> "
+                               f"{money_range(*q['range'])}" for q in state.quoted[-6:])
+            extra.append(snippet("QUOTED", quoted=quoted))
         pre = _prefetch_text(state, text)
         if pre:
             extra.append(pre)
@@ -387,7 +404,7 @@ async def _consult_turn(state: SessionState, text: str, on_tool_round=None) -> t
     system = build_system(state, state.phase, snippet("OUTPUT_CONSULT"), text)
     msgs, specs, total_ms, turn_calls, reply = build_messages(state), tools.tool_specs(), 0, [], None
     for rnd in range(MAX_TOOL_ROUNDS + 1):
-        allow = rnd < MAX_TOOL_ROUNDS
+        allow = rnd < MAX_TOOL_ROUNDS and state.phase != Phase.END
         state.metrics["llm_calls"] += 1
         try:
             r = await llm.chat_with_tools(system, msgs, specs, allow_tools=allow)
@@ -413,8 +430,12 @@ async def _consult_turn(state: SessionState, text: str, on_tool_round=None) -> t
                 state.phase = Phase.CLOSE
             msgs.append({"role": "tool", "tool_call_id": c["id"], "name": c["name"],
                          "content": json.dumps(res, ensure_ascii=False, default=str)})
-        if (state.phase == Phase.END or not allow) and r["reply"]:
-            reply = r["reply"]  # goodbye came together with end_conversation / final round
+        if state.phase == Phase.END:  # ended: speak the goodbye, no further LLM call
+            reply = state.goodbye or r["reply"]
+            if reply:
+                break
+        elif not allow and r["reply"]:
+            reply = r["reply"]
             break
     state.consult_opened = True
     if not reply:

@@ -44,6 +44,7 @@ class SessionState:
     outcome: Optional[str] = None
     soft_retry_used: bool = False
     summary: Optional[str] = None
+    goodbye: Optional[str] = None                          # last line from end_conversation
     events: list = field(default_factory=list)             # UI events raised by tools this turn (drained per turn)
     transcript: list = field(default_factory=list)         # [{role, text, lang, ts}]
     turn_log: list = field(default_factory=list)           # per turn: phase in/out, tool calls, llm_ms

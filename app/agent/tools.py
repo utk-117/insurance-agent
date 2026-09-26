@@ -14,6 +14,7 @@ import time
 from datetime import datetime, timedelta
 
 from app.agent import actions, knowledge
+from app.agent.money import money, money_range, parse_amount, words_in_text
 from app.agent.state import IST, Phase, SessionState, now_ist
 
 log = logging.getLogger("tools")
@@ -44,12 +45,15 @@ def tool_specs() -> list:
          "description": "Indicative yearly premium RANGE for a term plan at a given cover (sum assured), for this "
                         "customer's profile. Use when the customer wants a price at a cover not in SNAPSHOT.",
          "parameters": {"type": "object", "properties": {
-             "product_id": _pid(), "sum_assured": {"type": "integer", "description": "cover in rupees"}},
-             "required": ["product_id", "sum_assured"]}},
+             "product_id": _pid(),
+             "cover": {"type": "string", "description": "cover amount in words, as the customer said it, e.g. '30 crore', "
+                                                        "'50 lakh' (code converts it; don't convert to digits)"}},
+             "required": ["product_id", "cover"]}},
         {"name": "get_savings_illustration",
          "description": "What a savings plan's brochure example pays, scaled to the customer's yearly premium.",
          "parameters": {"type": "object", "properties": {
-             "product_id": _pid(), "annual_premium": {"type": "integer", "description": "rupees per year"}},
+             "product_id": _pid(),
+             "annual_premium": {"type": "string", "description": "yearly premium in words, e.g. '1 lakh'"}},
              "required": ["product_id", "annual_premium"]}},
         {"name": "get_claims_record",
          "description": "IRDAI individual death claims paid by amount and by number, FY2022-23 to FY2024-25.",
@@ -82,10 +86,14 @@ def tool_specs() -> list:
                         "they have decided to buy.",
          "parameters": {"type": "object", "properties": {"product_id": _pid()}, "required": ["product_id"]}},
         {"name": "end_conversation",
-         "description": "End the call after your goodbye. Call it when the conversation is over.",
+         "description": "End the call. Call it once, when the customer wants to stop or the conversation is over. "
+                        "`goodbye` is spoken as your last line.",
          "parameters": {"type": "object", "properties": {
-             "outcome": {"type": "string", "enum": OUTCOMES}, "summary": {"type": "string"}},
-             "required": ["outcome"]}},
+             "outcome": {"type": "string", "enum": OUTCOMES},
+             "goodbye": {"type": "string", "description": "your last words, in the customer's language, e.g. 'Sure, "
+                                                         "cutting the call now. Have a nice day, Rahul!'"},
+             "summary": {"type": "string"}},
+             "required": ["outcome", "goodbye"]}},
     ]
 
 
@@ -113,36 +121,67 @@ def get_product_info(state, product_id, topics):
     return {"product": f"{card['insurer']} {card['name']}", "source": card.get("source_file"), "sections": out}
 
 
-def get_premium_estimate(state, product_id, sum_assured):
+def _last_customer_text(state) -> str:
+    return next((t["text"] for t in reversed(state.transcript) if t["role"] == "user"), "")
+
+
+def get_premium_estimate(state, product_id, cover=None, sum_assured=None):
     p = state.profile
     if product_id not in _eligible_ids(state):
         return {"error": "This product is not in SNAPSHOT.eligible for this customer; don't quote it."}
+    sa = parse_amount(cover if cover is not None else sum_assured)
+    if not sa:
+        return {"error": f"Couldn't read the cover amount {cover or sum_assured!r}. Pass it in words, e.g. '30 crore'."}
+    fixed = None
+    said = parse_amount(_last_customer_text(state))
+    if said and said != sa and max(said, sa) / min(said, sa) in (10, 100):  # model dropped / added a zero
+        fixed, sa = sa, said
     q = knowledge.intake_rules().estimate_term_premium(
         product_id, age=p["age"], gender=p.get("gender") or "male", tobacco=bool(p.get("tobacco")),
-        sum_assured=int(sum_assured), employment_type=p.get("employment_type"))
+        sum_assured=sa, employment_type=p.get("employment_type"))
     if not q:
         return {"error": "No term-price basis for this product (savings plan?). Use get_savings_illustration."}
     min_sa = knowledge.cards()[product_id].get("min_sum_assured_inr") or 0
-    if sum_assured < min_sa:
-        return {"error": f"Minimum cover for this product is {min_sa:,}."}
+    if sa < min_sa:
+        return {"error": f"Minimum cover for this product is {money(min_sa)}."}
+    lo, hi = q["annual_premium_range"]
+    c = knowledge.cards()[product_id]
+    out = {"product": f"{c['insurer']} {c['name']}", "cover": money(sa),
+           "indicative_premium": money_range(lo, hi), "pay": "regular pay",
+           "basis": words_in_text(q["basis"], bare=True), "disclaimer": q["disclaimer"],
+           "say": f"For {money(sa)} cover: about {money_range(lo, hi)} (indicative)."}
+    if q.get("salaried_first_year_discount"):
+        out["salaried_discount"] = f"{q['salaried_first_year_discount'] * 100:g}% off the first year's premium only"
+    if q.get("note"):
+        out["note"] = q["note"]
+    if fixed:
+        out["corrected"] = f"You passed {money(fixed)} but the customer said {money(sa)}; quoted {money(sa)}."
     cap = (state.snapshot or {}).get("max_cover")
-    if cap and sum_assured > cap:
-        q["above_max_cover"] = (f"{sum_assured:,} is above the customer's indicative max cover {cap:,}; the insurer "
-                                "decides higher cover with income proof — say so.")
+    if cap and sa > cap:
+        out["above_max_cover"] = (f"{money(sa)} is above the customer's indicative max cover of {money(cap)}; the "
+                                  "insurer decides higher cover with income proof — say so.")
     _note_products(state, product_id)
-    state.quoted.append({"product_id": product_id, "sum_assured": int(sum_assured),
-                         "range": q["annual_premium_range"]})
-    return q
+    state.quoted.append({"product_id": product_id, "sum_assured": sa, "range": [lo, hi]})
+    return out
 
 
 def get_savings_illustration(state, product_id, annual_premium):
-    ill = knowledge.intake_rules().savings_illustration(product_id, int(annual_premium))
+    ap = parse_amount(annual_premium)
+    if not ap:
+        return {"error": f"Couldn't read the premium {annual_premium!r}. Pass it in words, e.g. '1 lakh'."}
+    ill = knowledge.intake_rules().savings_illustration(product_id, ap)
     if not ill:
         return {"error": "No brochure illustration for this product (term plan?). Use get_premium_estimate."}
     _note_products(state, product_id)
     kind = knowledge.pricing()["products"][product_id]["kind"]
-    out = {"product_id": product_id, "annual_premium": int(annual_premium), "illustrations": ill,
-           "disclaimer": knowledge.pricing()["_meta"]["spoken_disclaimer_en"]}
+    out = {"product_id": product_id, "customer_annual_premium": money(ap), "illustrations": [
+        {"option": x.get("option"), "example": f"age {x.get('age')}, {x.get('gender')}, "
+                                               f"{money(x['annual_premium'])} a year for {x.get('ppt')} years, "
+                                               f"policy term {x.get('policy_term')} years (p.{x.get('page')})",
+         "brochure_benefit": words_in_text(x.get("benefit", "")),
+         "scaled_to_customer_premium": words_in_text(x.get("benefit", ""), x["scale_factor"])} for x in ill],
+        "caveat": "Scaled from the brochure example; actual figures depend on age, term and option.",
+        "disclaimer": knowledge.pricing()["_meta"]["spoken_disclaimer_en"]}
     if kind == "savings_participating":
         out["must_say"] = "Give both the 4% and 8% figures and say bonuses are not guaranteed."
     return out
@@ -169,9 +208,10 @@ def compare_products(state, product_ids):
         out.append({"product_id": pid, "product": f"{c['insurer']} {c['name']}", "plan_type": c["plan_type"],
                     "pitch_line": c["pitch_line"], "key_benefits": c["key_benefits"][:5],
                     "plan_options": c["plan_options"], "premium_payment_options": c["premium_payment_options"],
-                    "cover_up_to_age": c.get("cover_up_to_age"), "min_sum_assured_inr": c.get("min_sum_assured_inr"),
+                    "cover_up_to_age": c.get("cover_up_to_age"), "min_cover": money(c.get("min_sum_assured_inr")),
                     "eligible_for_customer": pid in snap,
-                    "price_ranges": [{"sum_assured": q["sum_assured"], "annual_premium_range": q["annual_premium_range"]}
+                    "price_ranges": [{"cover": money(q["sum_assured"]),
+                                      "indicative_premium": money_range(*q["annual_premium_range"])}
                                      for q in snap.get(pid, {}).get("quotes", [])],
                     "claims_latest": rec[0] if rec else None})
     return {"products": out, "disclaimer": knowledge.pricing()["_meta"]["spoken_disclaimer_en"]}
@@ -240,7 +280,9 @@ def share_purchase_link(state, product_id):
             "next": "Tell them the official page is on their screen, then offer an advisor callback."}
 
 
-def end_conversation(state, outcome, summary=None):
+def end_conversation(state, outcome, goodbye=None, summary=None):
+    if state.phase == Phase.END:  # already ended this turn: no second log, no second goodbye
+        return {"ended": True, "note": "already ended"}
     # code decides what the outcome can be: a booked call or a shared link can't be downgraded by the model
     if state.callback_time:
         outcome = "purchase_link_and_callback" if state.purchase_link else "callback_scheduled"
@@ -252,6 +294,7 @@ def end_conversation(state, outcome, summary=None):
     if summary:
         state.summary = str(summary)[:300]
     state.phase = Phase.END
+    state.goodbye = (goodbye or "").strip() or None
     return {"ended": True, "outcome": state.outcome}
 
 

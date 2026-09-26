@@ -71,7 +71,7 @@ class TestFlow(Base):
                 {"reply": "You can get term cover of up to about 3 crore. What would you like it to do for you?"},
                 {"reply": None, "tool_calls": [{"id": "t1", "name": "get_premium_estimate",
                                                 "args": {"product_id": "sbi-smart-shield-plus",
-                                                         "sum_assured": 20_000_000}}]},
+                                                         "cover": "2 crore"}}]},
                 {"reply": "For 2 crore it's roughly in this range, indicative only. Shall I set up an advisor call?"},
                 {"reply": readback},
                 {"reply": None, "tool_calls": [{"id": "t2", "name": "book_callback",
@@ -97,7 +97,7 @@ class TestFlow(Base):
             self.assertEqual(s.phase, Phase.CONSULT)
             self.assertEqual(s.snapshot["max_cover"], 30_000_000)
             self.assertIn("CONSULT (opening)", sys_text(fake.systems[-1]))
-            self.assertIn('"max_cover": 30000000', sys_text(fake.systems[-1]))
+            self.assertIn('"max_cover": "₹3 crore"', sys_text(fake.systems[-1]))
             r = await c.handle_turn(s, "What would 2 crore cover cost?")
             self.assertEqual(r["tool_calls"], [{"name": "get_premium_estimate", "ok": True}])
             self.assertEqual(s.quoted[-1]["sum_assured"], 20_000_000)
@@ -185,7 +185,42 @@ class TestFlow(Base):
         self.assertEqual(s.metrics["tool_rounds"], 2)
 
 
+class TestEnding(Base):
+    def test_cut_the_call_is_one_llm_call(self):
+        # live bug: "cut the call" -> end_conversation, end_conversation again, then a 3rd call for the words
+        end = {"id": "e1", "name": "end_conversation",
+               "args": {"outcome": "not_interested", "goodbye": "Sure, cutting the call now. Have a nice day, Rahul!"}}
+        fake = FakeLLM(tool_replies=[{"reply": None, "tool_calls": [end, dict(end, id="e2")]}])
+
+        async def convo():
+            s = c.new_session("Rahul", "9876543210")
+            s.profile = {"age": 36, "gender": "male", "employment_type": "self_employed",
+                         "annual_income_inr": 10_000_000, "tobacco": True}
+            c._finish_intake(s)
+            s.consult_opened = True
+            return s, await c.handle_turn(s, "cut the call")
+
+        s, r = self.run_with(fake, convo())
+        self.assertTrue(r["ended"])
+        self.assertEqual(r["reply"], "Sure, cutting the call now. Have a nice day, Rahul!")
+        self.assertEqual(fake.tool_replies, [])  # no further LLM call after the goodbye
+        self.assertEqual(sum(1 for t in fake.tool_msgs), 1)
+        self.assertEqual(s.outcome, "not_interested")
+
+
 class TestPrompt(unittest.TestCase):
+    def test_no_raw_rupee_integers_in_prompt(self):
+        s = c.new_session("Rahul", "9876543210")
+        s.profile = {"age": 36, "gender": "male", "employment_type": "self_employed", "annual_income_inr": 10_000_000,
+                     "tobacco": True}
+        c._finish_intake(s)
+        s.quoted.append({"product_id": "hdfc-c2p-supreme", "sum_assured": 300_000_000, "range": [860_500, 1_344_500]})
+        dyn = c.build_system(s, Phase.CONSULT, c.snippet("OUTPUT_CONSULT"), "i need 30Cr coverage")[1]["text"]
+        self.assertIn('"max_cover": "₹20 crore"', dyn)            # 20x at 36 on 1 crore income
+        self.assertIn("Code read the amount in the customer's latest message as ₹30 crore", dyn)
+        self.assertIn("₹30 crore cover -> ₹8.61 lakh – ₹13.45 lakh a year", dyn)
+        snap_and_turn = dyn.split("## PROCESS KNOWLEDGE")[0]
+        self.assertNotRegex(snap_and_turn, r"\b\d{6,}\b")         # no 6+ digit raw amounts anywhere
     def test_placeholders_and_cache_split(self):
         s = c.new_session("Rahul", "9876543210")
         s.profile = {"age": 30, "gender": "male", "employment_type": "salaried", "annual_income_inr": 1_200_000,

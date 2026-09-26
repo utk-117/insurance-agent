@@ -11,6 +11,10 @@
 ## RESOLVED_TIME
 - Code resolved the time the customer just mentioned as {when} ({iso}). Read it back exactly like that.
 
+## RESOLVED_AMOUNT
+- Code read the amount in the customer's latest message as {amount}. Use exactly this amount (in words) when you
+  talk about it or pass it to a tool.
+
 ## QUOTED
 - Price ranges already given this session: {quoted}
 

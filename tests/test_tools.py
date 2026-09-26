@@ -37,25 +37,41 @@ class TestInfoTools(unittest.TestCase):
         self.assertIn("hdfc-c2p-supreme", self.s.discussed_products)
 
     def test_premium_estimate(self):
-        r = tools.run(self.s, "get_premium_estimate", {"product_id": "sbi-smart-shield-plus", "sum_assured": 20_000_000})
+        r = tools.run(self.s, "get_premium_estimate", {"product_id": "sbi-smart-shield-plus", "cover": "2 crore"})
         self.assertTrue(r["ok"])
-        lo, hi = r["annual_premium_range"]
-        self.assertLess(lo, hi)
+        self.assertEqual(r["cover"], "₹2 crore")
+        self.assertRegex(r["indicative_premium"], r"^₹[\d,.]+( lakh)? – ₹[\d,.]+( lakh)? a year$")
         self.assertIn("indicative", r["disclaimer"].lower())
+        self.assertNotRegex(r["basis"], r"\d{1,3}(,\d{3}){2,}")  # no raw grouped rupee numbers left
         self.assertEqual(self.s.quoted[-1]["sum_assured"], 20_000_000)
-        above = tools.run(self.s, "get_premium_estimate", {"product_id": "sbi-smart-shield-plus", "sum_assured": 50_000_000})
-        self.assertIn("above_max_cover", above)
-        bad = tools.run(self.s, "get_premium_estimate", {"product_id": "icici-assured-savings", "sum_assured": 10_000_000})
+        above = tools.run(self.s, "get_premium_estimate", {"product_id": "sbi-smart-shield-plus", "cover": "5 crore"})
+        self.assertIn("₹3 crore", above["above_max_cover"])
+        bad = tools.run(self.s, "get_premium_estimate", {"product_id": "icici-assured-savings", "cover": "1 crore"})
         self.assertFalse(bad["ok"])  # excluded for this customer
-        sav = tools.run(self.s, "get_premium_estimate", {"product_id": "hdfc-sanchay-plus", "sum_assured": 10_000_000})
+        sav = tools.run(self.s, "get_premium_estimate", {"product_id": "hdfc-sanchay-plus", "cover": "1 crore"})
         self.assertFalse(sav["ok"])  # savings plan -> use the illustration tool
+        self.assertFalse(tools.run(self.s, "get_premium_estimate",
+                                   {"product_id": "sbi-smart-shield-plus", "cover": "a lot"})["ok"])
+
+    def test_premium_estimate_fixes_a_dropped_zero(self):
+        # the live bug: customer said 30 crore, the model sent 3 crore
+        self.s.add("user", "bro wtf, I need 30Cr coverage")
+        r = tools.run(self.s, "get_premium_estimate", {"product_id": "hdfc-c2p-supreme", "cover": "3 crore"})
+        self.assertEqual(r["cover"], "₹30 crore")
+        self.assertIn("corrected", r)
+        self.assertEqual(self.s.quoted[-1]["sum_assured"], 300_000_000)
+        r2 = tools.run(self.s, "get_premium_estimate", {"product_id": "hdfc-c2p-supreme", "cover": 30_000_000})
+        self.assertEqual(r2["cover"], "₹30 crore")  # an integer off by 10x is caught too
 
     def test_savings_illustration(self):
-        r = tools.run(self.s, "get_savings_illustration", {"product_id": "sbi-smart-bachat-plus", "annual_premium": 100_000})
+        r = tools.run(self.s, "get_savings_illustration", {"product_id": "sbi-smart-bachat-plus", "annual_premium": "2 lakh"})
         self.assertTrue(r["ok"])
         self.assertIn("4%", r["must_say"])
+        ill = r["illustrations"][0]
+        self.assertIn("₹39.01 lakh", ill["brochure_benefit"])          # brochure: Rs 39,01,167 at 4% on 1 lakh/yr
+        self.assertIn("₹78.02 lakh", ill["scaled_to_customer_premium"])  # scaled x2 by code, not by the model
         self.assertFalse(tools.run(self.s, "get_savings_illustration",
-                                   {"product_id": "hdfc-c2p-supreme", "annual_premium": 100_000})["ok"])
+                                   {"product_id": "hdfc-c2p-supreme", "annual_premium": "1 lakh"})["ok"])
 
     def test_claims_compare_process(self):
         r = tools.run(self.s, "get_claims_record", {"insurer_slug": "sbi-life"})
@@ -131,9 +147,13 @@ class TestCloseGuards(unittest.TestCase):
         self.assertEqual(self.s.events[-1]["type"], "purchase_link")
 
     def test_end_conversation_cannot_fake_a_close(self):
-        r = tools.run(self.s, "end_conversation", {"outcome": "callback_scheduled"})
+        r = tools.run(self.s, "end_conversation", {"outcome": "callback_scheduled", "goodbye": "Bye!"})
         self.assertEqual(r["outcome"], "dropped")  # no callback was booked
         self.assertEqual(self.s.phase, Phase.END)
+        self.assertEqual(self.s.goodbye, "Bye!")
+        again = tools.run(self.s, "end_conversation", {"outcome": "not_interested", "goodbye": "Bye again"})
+        self.assertEqual(again["note"], "already ended")       # second call is a no-op
+        self.assertEqual((self.s.outcome, self.s.goodbye), ("dropped", "Bye!"))
         s2 = consult_state()
         s2.callback_time = "2026-09-27T17:00+05:30"
         self.assertEqual(tools.run(s2, "end_conversation", {"outcome": "not_interested"})["outcome"],

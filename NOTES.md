@@ -26,6 +26,18 @@
   static system blocks marked `cache_control`.
 
 ## Challenges
+- **Sarvam LLM misreads rupee amounts by 10x** (first v2 test session, 36 / self-employed / ₹1 crore income):
+  the snapshot said `max_cover: 200000000` (₹20 crore, correct: 20x above 35) and the model said "2 crore". The
+  customer asked for 30 crore; the model called the estimate tool correctly with 300000000 but *said* "3 crore",
+  then on the next turn sent 30000000 ("30 crore" -> one zero short). Both directions of the number <-> words
+  conversion were left to the model. Fix (`app/agent/money.py`): the model never sees a raw rupee integer —
+  snapshot, tool results and quoted ranges are pre-formatted ("₹20 crore", "₹8.61 lakh – ₹13.45 lakh a year");
+  tools take amounts in words ("30 crore") parsed by code; code reads the amount in the customer's message into
+  the prompt (like callback times) and auto-corrects a tool amount that is off by 10x/100x from what the customer
+  said; savings illustrations are scaled by code, not "multiply by 1.8". Replayed live: correct 20 crore / 30 crore.
+- **"cut the call" took 3 LLM calls** (end_conversation with no words, end_conversation again, then a third call
+  that said "The call has been ended"). Fix: `end_conversation` carries the `goodbye`; the loop stops as soon as it
+  succeeds; a second end_conversation is a no-op. Now 1 call (~0.5 s): "Sure, cutting the call now. Have a nice day!"
 - Sarvam credits: two full v1 eval runs (30 cases, ~11k input tokens per call, plus judge calls with reasoning)
   used up the account's credits. From then on every call returned HTTP 402 `insufficient_quota_error`, which
   showed up as parse fallbacks and failed cases late in the second run. Use `--no-judge` and `--only` for cheap runs.
@@ -82,10 +94,10 @@ Prompt size: ~11k input tokens per turn (cards ~6k + process + sections); LLM 0.
   The v1 topic router is now a prefetch: sections the customer's words name are preloaded for the product in focus.
 - Prompt caching: static block = persona, rails, process knowledge, objection guide, need_fit, cards, output rules;
   dynamic block = phase guide, intake state, snapshot, claims, current turn (time, calendar, language, prefetch).
-- Sarvam tool calling: `SARVAM_TOOL_MODE=native` (OpenAI-style `tools`, documented for /v1/chat/completions) with
-  automatic fallback to a JSON protocol (`prompts/tools_json.md`) if the API rejects tools. **Not yet verified live**
-  — the Sarvam account ran out of credits (HTTP 402 `insufficient_quota_error`) during the v1 eval runs. Tool-call
-  error rate per provider is counted in `TOOL_ERRORS` and reported by the eval runner.
+- Sarvam tool calling: `SARVAM_TOOL_MODE=native` (OpenAI-style `tools` on /v1/chat/completions) — **verified live**
+  on `sarvam-105b-conversations`: parallel tool calls, `finish_reason: tool_calls`, valid JSON arguments. The JSON
+  protocol (`prompts/tools_json.md`) stays as an automatic fallback if the API ever rejects tools. Tool-call error
+  rate per provider is counted in `TOOL_ERRORS` and reported by the eval runner.
 - Voice: a filler line ("Ek second, main check karti hoon") is spoken in the background when a tool round starts
   after the customer has already waited > 1.5 s.
 - Lead log: v2 columns; an older `data/leads.csv` with v1 columns is moved aside, not mixed.
