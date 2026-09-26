@@ -28,7 +28,7 @@ load_dotenv()
 logging.basicConfig(level=os.getenv("LOG_LEVEL", "INFO"), format="%(asctime)s %(name)s %(message)s")
 logging.getLogger("httpx").setLevel(logging.WARNING)
 
-from app import pipeline  # noqa: E402
+from app import pipeline, sheets  # noqa: E402
 from app.adapters.base import ProviderError  # noqa: E402
 from app.agent import controller  # noqa: E402
 
@@ -70,7 +70,8 @@ class NewSession(BaseModel):
 @app.get("/healthz")
 def healthz():
     return {"ok": True, "stt": os.getenv("STT_PROVIDER", "sarvam"), "tts": os.getenv("TTS_PROVIDER", "sarvam"),
-            "llm": os.getenv("LLM_PROVIDER", "sarvam"), "sessions": len(SESSIONS)}
+            "llm": os.getenv("LLM_PROVIDER", "sarvam"), "sessions": len(SESSIONS),
+            "leads": sheets.status()["leads"], "sheets_errors": sheets.status()["sheets_errors"]}
 
 
 @app.post("/api/session")

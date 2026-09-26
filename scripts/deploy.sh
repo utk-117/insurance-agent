@@ -9,6 +9,9 @@ REGION=asia-south1
 SECRETS="SARVAM_API_KEY=SARVAM_API_KEY:latest,ACCESS_CODE=ACCESS_CODE:latest"
 if gcloud secrets describe ANTHROPIC_API_KEY >/dev/null 2>&1; then SECRETS="$SECRETS,ANTHROPIC_API_KEY=ANTHROPIC_API_KEY:latest"; fi
 
+# SHEET_ID (not secret) from the environment or .env; the service account needs Editor access to that Sheet
+SHEET_ID=${SHEET_ID:-$(grep '^SHEET_ID=' .env 2>/dev/null | cut -d= -f2-)}
+
 gcloud run deploy "$SERVICE" --quiet \
   --source . \
   --region "$REGION" \
@@ -18,7 +21,7 @@ gcloud run deploy "$SERVICE" --quiet \
   --timeout=900 \
   --concurrency=20 \
   --cpu=1 --memory=1Gi \
-  --set-env-vars "STT_PROVIDER=${STT_PROVIDER:-sarvam},TTS_PROVIDER=${TTS_PROVIDER:-sarvam},LLM_PROVIDER=${LLM_PROVIDER:-sarvam},BRAND_NAME=${BRAND_NAME:-Suraksha Advisory}" \
+  --set-env-vars "STT_PROVIDER=${STT_PROVIDER:-sarvam},TTS_PROVIDER=${TTS_PROVIDER:-sarvam},LLM_PROVIDER=${LLM_PROVIDER:-sarvam},BRAND_NAME=${BRAND_NAME:-Suraksha Advisory},SHEET_ID=${SHEET_ID}" \
   --set-secrets "$SECRETS"
 
 gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)'
