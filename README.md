@@ -86,6 +86,11 @@ Organisation policy blocks `allUsers`, so the service is public via `--no-invoke
 guards it. Health check: `/health`.
 
 ## Milestones
-- [x] M0 setup · [x] M1 knowledge wiring · [x] M2 text agent · [x] M2b v2 redesign (intake in code, consult with tools)
+- [x] M0 setup
+- [x] M1 knowledge wiring
+- [x] M2 text agent
+- [x] M2b v2 redesign (intake in code, consult with tools)
 - [x] M3 evals + swap test (Sarvam vs Claude, judge scorecard, benchmarks)
-- [x] M4 voice web UI, deployed · [x] M5 Google Sheets, purchase link by message, latency panel · [x] M6 ship
+- [x] M4 voice web UI, deployed
+- [x] M5 Google Sheets, purchase link by message, latency panel
+- [x] M6 ship
