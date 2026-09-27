@@ -11,3 +11,5 @@ data/leads*.csv
 evals/results/
 tests/
 data/knowledge/build/
+# source brochures: in git for reference, never read at runtime
+data/insurers/*/products/

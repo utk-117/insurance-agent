@@ -73,7 +73,7 @@ scripts/
 data/
   knowledge/                # ALREADY BUILT — do not regenerate. See data/knowledge/README.md
     README.md
-    cards.json              # L1: one card per product (10) — always in prompt (~6k tokens)
+    cards.json              # L1: one card per product (10) — always in prompt (~4.5k tokens)
     eligibility.json        # L2: 179 rows (plan option x pay type x PPT x channel) — code only
     eligibility.py          # L2: eligible_products(age, goal, channel="all", rows, cards); maps child_future /
                             #     retirement -> savings_protection via GOAL_ALIASES
@@ -152,7 +152,7 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
 - **Purchase link by message** (product-owner decision): once the customer has decided, Asha calls
   `send_purchase_link` without asking again and says she'll send a message with the purchase link to the number
   they're talking on. Nothing is shown on screen and no URL is stored in the app — the lead row's `purchase_link`
-  column names the plan, and the sales team / a messaging system sends the link. `cards.json.purchase_url` is unused.
+  column names the plan, and the sales team / a messaging system sends the link. Cards carry no purchase URL.
 - **Amounts are words, never raw integers** (`app/agent/money.py`): the snapshot, tool results and quoted ranges
   say "₹20 crore", "₹8.61 lakh – ₹13.45 lakh a year"; tools take amounts in words and code parses them; the
   amount the customer mentions is parsed by code into the prompt. (Sarvam misread raw integers by 10x.)

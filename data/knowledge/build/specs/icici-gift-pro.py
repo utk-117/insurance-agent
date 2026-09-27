@@ -27,7 +27,6 @@ CARD = {
     "ideal_for": "Savers planning a guaranteed second income or known future expenses (children's education, retirement top-up) with flexibility on when the lump sum arrives.",
     "not_for": "Pure protection seekers; life cover is only about 11x the annual premium (lower with Income Booster).",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

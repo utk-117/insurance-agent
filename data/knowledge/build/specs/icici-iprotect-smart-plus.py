@@ -26,7 +26,6 @@ CARD = {
     "ideal_for": "Salaried earners with loans or young dependants who want large cover (₹50 lakh+) and flexibility as life changes.",
     "not_for": "Anyone needing cover below ₹50 lakh or wanting a maturity payout.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

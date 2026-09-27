@@ -39,8 +39,6 @@ for pid, c in cards.items():
         s = sections.get(pid, {}).get(t)
         if not s or not s.get("available"):
             errors.append(f"{pid}: topics_available lists '{t}' but section missing/unavailable")
-    if c.get("purchase_url") is None:
-        print(f"warn: {pid} purchase_url is null (link option will be skipped)")
 
 for r in rows:
     if r["product_id"] not in cards:

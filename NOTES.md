@@ -100,7 +100,7 @@ Prompt tuning left for the human review (not changed; `prompts/*.md` untouched e
 - RECOMMEND sometimes pitches two products at once, and repeats the insurer ("ICICI Prudential Life ICICI Pru …").
 - CALLBACK sometimes says "scheduled" before the customer has confirmed the read-back.
 
-Prompt size: ~11k input tokens per turn (cards ~6k + process + sections); LLM 0.6–1.6 s per turn.
+Prompt size: ~11k input tokens per turn (cards ~4.5k + process + sections); LLM 0.6–1.6 s per turn.
 
 ## M2b — v2 redesign (intake in code, consult by the LLM)
 - Flow: GREET -> CONFIRM_IDENTITY -> INTAKE (age, gender, employment, income, tobacco; order decided in code)
@@ -239,7 +239,7 @@ LLM cost by up to ~60%.
   `send_purchase_link` without asking again and says she'll send a message with the purchase link to the number
   they're talking on. Nothing is shown on screen and no URL is stored in the app: the lead row's `purchase_link`
   column says which plan's link to send (e.g. "HDFC Life Click 2 Protect Supreme [hdfc-c2p-supreme] - send by
-  message"), and the sales team / a messaging system sends it. `cards.json.purchase_url` is no longer used.
+  message"), and the sales team / a messaging system sends it. `purchase_url` has been removed from the cards.
 - **Google Sheets**: every lead row goes to the CSV and, with SHEET_ID set, is upserted (by session_id) into the
   Sheet's "leads" tab from a background thread with retries. On Cloud Run it authenticates as the service's own
   service account (no key file); the Sheet must be shared with that account as Editor. Locally, Sheets writes need

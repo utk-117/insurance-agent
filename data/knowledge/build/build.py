@@ -35,7 +35,7 @@ def main():
         (OUT / "sections" / f"{pid}.json").write_text(json.dumps(sec, ensure_ascii=False, indent=2))
     meta = {"extracted_on": TODAY, "source": "Official product brochures (English) downloaded from sbilife.co.in, iciciprulife.com, hdfclife.com",
             "review_status": "machine-built from brochures and hand-checked against the rendered eligibility tables; human review pending"}
-    (OUT / "cards.json").write_text(json.dumps({"_meta": {**meta, "how_to_use": "Always in the prompt. Pitch from pitch_line/key_benefits only. Never quote premiums."}, "products": cards}, ensure_ascii=False, indent=2))
+    (OUT / "cards.json").write_text(json.dumps({"_meta": {**meta, "how_to_use": "Always in the prompt (minus topics_available, source_file, uin). Pitch from pitch_line/key_benefits. No prices here: premiums only as ranges from SNAPSHOT / the pricing tools (pricing.json)."}, "products": cards}, ensure_ascii=False, indent=2))
     (OUT / "eligibility.json").write_text(json.dumps({"_meta": {**meta, "how_to_use": "Code-only filter (see eligibility.py). Use channel='all' rows for this agent; 'pos' rows are for POSP sales and are kept for completeness."}, "rows": rows}, ensure_ascii=False, indent=2))
     print(f"{len(cards)} cards, {len(rows)} eligibility rows, {len(ids)} section files")
 

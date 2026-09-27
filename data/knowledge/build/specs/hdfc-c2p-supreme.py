@@ -27,7 +27,6 @@ CARD = {
     "ideal_for": "Families wanting a customisable term plan: growing cover, a loan-linked reducing cover, or premiums back at maturity.",
     "not_for": "People looking for savings or income; without Return of Premium there is no maturity benefit.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

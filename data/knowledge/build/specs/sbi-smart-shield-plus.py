@@ -25,7 +25,6 @@ CARD = {
     "ideal_for": "Earning members with dependants who want maximum cover per rupee; young families expecting their responsibilities to grow.",
     "not_for": "Anyone who wants money back on survival - there is no maturity benefit.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

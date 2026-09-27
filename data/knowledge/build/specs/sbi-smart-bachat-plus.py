@@ -25,7 +25,6 @@ CARD = {
     "ideal_for": "Conservative savers building a lump sum for a goal 15-30 years away (child's marriage, retirement corpus) who also want life cover.",
     "not_for": "People wanting guaranteed returns (bonuses are not guaranteed) or high cover per rupee.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

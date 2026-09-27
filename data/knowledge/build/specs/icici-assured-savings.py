@@ -25,7 +25,6 @@ CARD = {
     "ideal_for": "High-income savers (₹20 lakh+ a year) who want a fully guaranteed lump sum for a goal 10-20 years away.",
     "not_for": "Anyone who cannot commit ₹20 lakh a year, or who mainly needs protection.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
     "data_caveats": ["Brochure is dated FY 2023-24 (Advt L/II/1494/2023-24); interest rates quoted inside are from Dec 2023. Confirm the current version with ICICI before relying on it."],
 }

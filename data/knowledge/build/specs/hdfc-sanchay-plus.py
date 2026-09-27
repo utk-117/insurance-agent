@@ -27,7 +27,6 @@ CARD = {
     "ideal_for": "Risk-averse savers who want a guaranteed lump sum or a guaranteed income stream for retirement, children's education or a lifelong pension-like income.",
     "not_for": "People wanting high life cover per rupee, or market-linked growth.",
     "available_online": None,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

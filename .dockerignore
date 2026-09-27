@@ -10,3 +10,5 @@ data/bench
 data/leads*.csv
 evals/results
 .claude
+# source brochures: in git for reference, never read at runtime
+data/insurers/*/products/

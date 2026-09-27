@@ -26,7 +26,6 @@ CARD = {
     "ideal_for": "People who want a lifelong income stream and a legacy for their children, and are comfortable with part of the return being non-guaranteed bonuses.",
     "not_for": "Anyone needing fully guaranteed returns or maximum life cover per rupee.",
     "available_online": None,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

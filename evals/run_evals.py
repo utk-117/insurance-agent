@@ -299,22 +299,10 @@ async def main(args):
                             "transcript": transcript_text(state)})
             print(f"  {'PASS' if not fails else 'FAIL'} {case['id']} ({secs}s)", flush=True)
 
-    plain = [c for c in cases if not c.get("patch_purchase_urls")]
-    patched = [c for c in cases if c.get("patch_purchase_urls")]
     model = get_llm(args.llm).model
     print(f"Running {len(cases)} cases with LLM={provider} ({model}), judge "
           f"{'off' if args.no_judge else jllm.model}", flush=True)
-    await asyncio.gather(*(one(c) for c in plain))
-    if patched:  # cards are shared module state, so these run alone
-        saved = {pid: c.get("purchase_url") for pid, c in knowledge.cards().items()}
-        for pid, c in knowledge.cards().items():
-            c["purchase_url"] = c.get("purchase_url") or f"https://example.com/test/{pid}"
-        try:
-            for c in patched:
-                await one(c)
-        finally:
-            for pid, url in saved.items():
-                knowledge.cards()[pid]["purchase_url"] = url
+    await asyncio.gather(*(one(c) for c in cases))
 
     order = {c["id"]: i for i, c in enumerate(cases)}
     results.sort(key=lambda r: order[r["id"]])

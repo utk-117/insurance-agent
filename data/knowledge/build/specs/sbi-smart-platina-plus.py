@@ -25,7 +25,6 @@ CARD = {
     "ideal_for": "Savers who want a predictable second income later (children's education, retirement top-up) without market risk.",
     "not_for": "People who want the largest possible life cover per rupee; the sum assured is only about 11x the annual premium.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

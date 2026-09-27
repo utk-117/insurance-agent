@@ -24,7 +24,6 @@ CARD = {
     "ideal_for": "Someone who wants a family safety net but dislikes 'losing' premiums on a pure term plan.",
     "not_for": "People looking for investment growth or income; maturity only returns premiums, no returns on top.",
     "available_online": True,
-    "purchase_url": None,
     "source_file": SOURCE,
 }
 

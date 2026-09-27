@@ -3,7 +3,7 @@
     "extracted_on": "2026-09-25",
     "source": "Official product brochures (English) downloaded from sbilife.co.in, iciciprulife.com, hdfclife.com",
     "review_status": "machine-built from brochures and hand-checked against the rendered eligibility tables; human review pending",
-    "how_to_use": "Always in the prompt. Pitch from pitch_line/key_benefits only. Never quote premiums."
+    "how_to_use": "Always in the prompt (minus topics_available, source_file, uin). Pitch from pitch_line/key_benefits. No prices here: premiums only as ranges from SNAPSHOT / the pricing tools (pricing.json)."
   },
   "products": [
     {
@@ -53,7 +53,6 @@
       "ideal_for": "Families wanting a customisable term plan: growing cover, a loan-linked reducing cover, or premiums back at maturity.",
       "not_for": "People looking for savings or income; without Return of Premium there is no maturity benefit.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "HDFC-Life-click-2-protect-supreme.pdf",
       "topics_available": [
         "key_features",
@@ -122,7 +121,6 @@
       "ideal_for": "People who want a lifelong income stream and a legacy for their children, and are comfortable with part of the return being non-guaranteed bonuses.",
       "not_for": "Anyone needing fully guaranteed returns or maximum life cover per rupee.",
       "available_online": null,
-      "purchase_url": null,
       "source_file": "HDFC-Life-Sanchay-Par-Advantage-Retail-Brochure.pdf",
       "topics_available": [
         "key_features",
@@ -191,7 +189,6 @@
       "ideal_for": "Risk-averse savers who want a guaranteed lump sum or a guaranteed income stream for retirement, children's education or a lifelong pension-like income.",
       "not_for": "People wanting high life cover per rupee, or market-linked growth.",
       "available_online": null,
-      "purchase_url": null,
       "source_file": "Sanchay-Plus-brochure.pdf",
       "topics_available": [
         "key_features",
@@ -247,7 +244,6 @@
       "ideal_for": "High-income savers (₹20 lakh+ a year) who want a fully guaranteed lump sum for a goal 10-20 years away.",
       "not_for": "Anyone who cannot commit ₹20 lakh a year, or who mainly needs protection.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "ICICI Pru Assured Savings Insurance Plan.pdf",
       "data_caveats": [
         "Brochure is dated FY 2023-24 (Advt L/II/1494/2023-24); interest rates quoted inside are from Dec 2023. Confirm the current version with ICICI before relying on it."
@@ -310,7 +306,6 @@
       "ideal_for": "Savers planning a guaranteed second income or known future expenses (children's education, retirement top-up) with flexibility on when the lump sum arrives.",
       "not_for": "Pure protection seekers; life cover is only about 11x the annual premium (lower with Income Booster).",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "ICICI_Pru_GIFT_Pro_Brochure.pdf",
       "topics_available": [
         "key_features",
@@ -375,7 +370,6 @@
       "ideal_for": "Salaried earners with loans or young dependants who want large cover (₹50 lakh+) and flexibility as life changes.",
       "not_for": "Anyone needing cover below ₹50 lakh or wanting a maturity payout.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "ICICI_Pru_iProtect_Smart_Plus_Brochure.pdf",
       "topics_available": [
         "key_features",
@@ -435,7 +429,6 @@
       "ideal_for": "Conservative savers building a lump sum for a goal 15-30 years away (child's marriage, retirement corpus) who also want life cover.",
       "not_for": "People wanting guaranteed returns (bonuses are not guaranteed) or high cover per rupee.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "SBI_Life_-_Smart_Bachat_Plus_Brochure_eng.pdf",
       "topics_available": [
         "key_features",
@@ -493,7 +486,6 @@
       "ideal_for": "Savers who want a predictable second income later (children's education, retirement top-up) without market risk.",
       "not_for": "People who want the largest possible life cover per rupee; the sum assured is only about 11x the annual premium.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "SBI_Life_-_Smart_Platina_Plus_Brochure_eng.pdf",
       "topics_available": [
         "key_features",
@@ -557,7 +549,6 @@
       "ideal_for": "Earning members with dependants who want maximum cover per rupee; young families expecting their responsibilities to grow.",
       "not_for": "Anyone who wants money back on survival - there is no maturity benefit.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "SBI_Life_-_Smart_Shield_Plus_Brochure_eng.pdf",
       "topics_available": [
         "key_features",
@@ -615,7 +606,6 @@
       "ideal_for": "Someone who wants a family safety net but dislikes 'losing' premiums on a pure term plan.",
       "not_for": "People looking for investment growth or income; maturity only returns premiums, no returns on top.",
       "available_online": true,
-      "purchase_url": null,
       "source_file": "SBI_Life_-_Smart_Swadhan_Supreme__brochure__eng.pdf",
       "topics_available": [
         "key_features",

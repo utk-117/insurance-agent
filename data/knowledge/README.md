@@ -1,12 +1,13 @@
 # Life insurance knowledge base (10 products)
 
-Built from the 10 official brochures in `Downloads/life-insurance-policies/`. Three layers:
+Built from the 10 official brochures (English, downloaded from sbilife.co.in, iciciprulife.com and hdfclife.com),
+kept in git at `data/insurers/<slug>/products/` (file name = the card's `source_file`). Three layers:
 
 | Layer | File | Used by | When |
 |---|---|---|---|
 | 1. Cards | `cards.json` | LLM prompt | Always (about 4.5k tokens for all 10) |
 | 2. Eligibility | `eligibility.json` + `eligibility.py` | Code only | Before recommending: filter by age (and goal) |
-| 3. Sections | `sections/<product_id>.json` | LLM prompt | On demand: one topic of one product per question |
+| 3. Sections | `sections/<product_id>.json` | `get_product_info` tool (the topic router prefetches a section when the customer's words clearly name it) | On demand: topics of one product per question |
 
 ## Products
 
@@ -24,9 +25,11 @@ Built from the 10 official brochures in `Downloads/life-insurance-policies/`. Th
 | hdfc-sanchay-par-advantage | HDFC Life | Participating income, whole life |
 
 ## Layer 1: card fields
-`id, name, insurer, uin, plan_type, product_class, goals[], pitch_line, key_benefits[], plan_options[], premium_payment_options[], premium_frequency[], cover_up_to_age, min_sum_assured_inr, riders[], ideal_for, not_for, available_online (null = brochure doesn't say), purchase_url (fill in), source_file, topics_available[], data_caveats[]`
+`id, name, insurer, uin, plan_type, product_class, goals[], pitch_line, key_benefits[], plan_options[], premium_payment_options[], premium_frequency[], cover_up_to_age, min_sum_assured_inr, riders[], ideal_for, not_for, available_online (null = brochure doesn't say), source_file, topics_available[]`, plus optional `data_caveats[]`
+(only where the brochure needs a caveat; today only `icici-assured-savings`). There is no purchase URL: the link is
+sent to the customer by message (see CLAUDE.md).
 
-`goals` uses the discovery values: `pure_protection`, `savings_protection`. None of the 10 fits `child_future` or `retirement` alone; savings plans that allow minors or lifelong income are flagged in `key_benefits`.
+`goals` uses the goal values: `pure_protection`, `savings_protection`. None of the 10 fits `child_future` or `retirement` alone; savings plans that allow minors or lifelong income are flagged in `key_benefits`.
 
 ## Layer 2: eligibility rows
 One row per combination of plan option × pay type × premium payment term (PPT) × channel. The value conventions are:
@@ -44,14 +47,14 @@ One row per combination of plan option × pay type × premium payment term (PPT)
 ## Layer 3: sections
 There are 16 fixed topics: `key_features, plan_options, death_benefit, maturity_benefit, optional_benefits, riders, free_look, grace_period, suicide_exclusion, surrender_and_paid_up, loan, revival, tax, claims, non_disclosure_sec45, other_exclusions`.
 
-Each section is `{topic, available, text, pages, note?}`. `text` is the brochure wording word for word, and `pages` are PDF page numbers for citation. If `available: false`, the agent says the brochure doesn't cover it and offers an advisor callback.
+Each section is `{topic, available, text, pages, note?}`. `text` is the brochure wording word for word, and `pages` are PDF page numbers for citation. The agent reads them through the `get_product_info` tool (product id + topics), which returns this wording with
+the pages. If `available: false`, the agent says the brochure doesn't cover it and offers an advisor callback.
 
 Premium illustrations, sample premium tables and 4%/8% bonus projections have been left out on purpose. A regex scan confirms no premium figures remain. The figures that do remain are benefit amounts and limits, for example the ₹3 lakh insta-payout and rider sum-assured caps.
 
 ## Known gaps / review before go-live
 - **Claims:** only iProtect Smart Plus and Click 2 Protect Supreme brochures cover it, and only the instant/immediate payout part. The full claim process lives in the policy wordings.
 - **ICICI Assured Savings** brochure is from FY 2023-24. Check that it is the current version.
-- **`purchase_url`** is null for all 10. Fill in each product page URL.
 - Eligibility tables were checked by eye against the rendered PDF pages, because the extracted text garbles them. A human spot-check is still recommended.
 
 ## Rebuild
