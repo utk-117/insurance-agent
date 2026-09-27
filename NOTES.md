@@ -1,5 +1,27 @@
 # Notes
 
+## Summary (M6, 27 Sep 2026)
+**What shipped:** a browser voice agent (Asha) that sells 10 life-insurance plans from SBI Life, ICICI Prudential
+Life and HDFC Life, live on Cloud Run (asia-south1). Voice pipeline built from scratch; Sarvam for STT (Saaras v3),
+TTS (Bulbul v3) and LLM (Sarvam-105B conversations); Claude Haiku 4.5 as the swappable LLM.
+
+**Approach in one paragraph:** v1 scripted every step with an LLM-labelled stage machine and broke whenever the
+model mislabelled intent. v2 keeps code in charge only where a mistake is costly — intake order and parsing,
+eligibility / max cover / price ranges (`profile_snapshot()`), every rupee amount (the model only sees words), and
+the close (callback checks, purchase link, hang-up) — and lets the LLM run the actual sales conversation with the
+snapshot in context and 9 tools for detail. Each failure found in testing was fixed at the lowest reliable level:
+data/code first ("say" lines, guards, parsers), prompts second.
+
+| | Result |
+|---|---|
+| Evals (24 scripted conversations, Claude Opus 5 judge) | Sarvam **22/24 must**, scorecard mean **0.83**; Claude Haiku 4.5 18/24, 0.69 |
+| Time to first audio, live service (voice turns) | **p50 1,696 ms / p90 2,498 ms** (see Latency) |
+| Cost per conversation-minute (Sarvam stack) | **≈ ₹3.0** (LLM ₹1.05 + TTS ₹1.91 + STT ₹0.07); Haiku as LLM ≈ ₹3.3 |
+| Tool calls | 20 in 24 conversations (Sarvam, native tool calling); 1 error, a guard doing its job |
+| Unit tests | 86, no network |
+| Live smoke | 5 sessions / 30 voice turns, 0 failures; leads written to the Google Sheet |
+
+
 ## Approach
 - Voice pipeline is plain Python + HTTP (httpx / anthropic SDK); no voice-agent framework.
 - Providers are chosen per kind by env var and registered in `app/adapters/base.py`.
@@ -18,12 +40,15 @@
 - **Router keyword matching**: keywords of 4 characters or fewer ("war", "tax", "exit", "gift") need word
   boundaries (optional plural "s"); longer keywords match as substrings, as `topic_router.json` specifies. Without
   this, "war" matched "aware" and "exit" matched "existing". Done in code; no data files changed.
-- **Shortlist**: an unknown `income_band` fails a hard `gate` (ICICI Assured Savings isn't pitched until the band
+- **Shortlist (v1, superseded by `profile_snapshot()` in v2)**: an unknown `income_band` fails a hard `gate` (ICICI Assured Savings isn't pitched until the band
   is known to be 25L+). A `soft_gate` sorts the product below un-gated ones but never drops it. A volunteered
   `preferred_insurer` puts that insurer's products first and lifts the one-per-insurer rule. A bare insurer
   name in the transcript ("the HDFC one") resolves to that insurer's shortlisted product.
-- **Claude**: `claude-opus-5`, `output_config.effort=low`, structured output via `output_config.format`,
-  static system blocks marked `cache_control`.
+- **Claude**: default `claude-haiku-4-5` (product-owner choice; `claude-opus-5` was tried first — similar quality,
+  2–6.7 s per turn). Structured output via `output_config.format` (schemas made strict for Claude), static system
+  blocks marked `cache_control` (~10.6k tokens cached), `effort` only for Opus/Sonnet.
+- **Sarvam tool calling**: native OpenAI-style `tools` on `/v1/chat/completions` works (parallel calls, valid JSON
+  args); the JSON protocol in `prompts/tools_json.md` is an automatic fallback that was never needed.
 
 ## Challenges
 - **Sarvam LLM misreads rupee amounts by 10x** (first v2 test session, 36 / self-employed / ₹1 crore income):
@@ -160,20 +185,40 @@ What the eval runs found and fixed (all in code unless marked):
   confirmation; case 14 matched to CLAUDE.md; case 17's second assertion aligned to objections.md.
 
 ## Latency / cost
-`scripts/bench.py` — fixed audio clips + 4 fixed turns through the real voice pipeline (STT -> controller ->
-first-sentence TTS), 5 runs per LLM, STT/TTS = Sarvam, from a laptop in India
-(`data/bench/bench-20260926-220412.csv`):
+**Live service** (Cloud Run asia-south1, Sarvam for STT / LLM / TTS; `scripts/bench_live.py -n 5`, 27 Sep 2026:
+5 sessions, 30 spoken customer turns, 0 failures). "First audio" = customer's audio received -> first agent audio
+byte sent (the browser adds its own recording upload and playback start on top).
 
-| ms (p50 / p90) | Sarvam LLM | Claude Haiku 4.5 LLM |
+| ms | p50 | p90 |
 |---|---|---|
-| STT (saaras:v3) | 244 / 332 | 328 / 386 |
-| LLM | 484 / 766 | 2,100 / 2,424 |
-| TTS first chunk (bulbul:v3) | 2,140 / 3,757 | 2,087 / 3,722 |
-| **total to first audio** | **2,856 / 4,684** | **4,522 / 6,164** |
+| STT (saaras:v3) | 250 | 323 |
+| LLM (sarvam-105b-conversations, incl. tool rounds) | 464 | 744 |
+| TTS first chunk (bulbul:v3) | 874 | 1,608 |
+| **time to first audio** | **1,696** | **2,498** |
+| greeting (agent speaks first) | 1,727 | 1,757 |
 
-TTS of the first chunk is the biggest stage for Sarvam (~75% of time to first audio). Next step for M4: make
-the first spoken chunk short (first clause only) so audio starts sooner. ~16k input tokens per LLM call
-(Claude: ~10.6k of them served from the prompt cache).
+History: 2.86 s p50 / 4.68 s p90 on a laptop before the short-first-chunk change (TTS of the first chunk was ~75% of
+the wait), 2.23 / 2.66 s after it; the live service in Mumbai, next to Sarvam, is faster again. Local comparison
+(`scripts/bench.py`, laptop): Sarvam LLM 484 ms p50 vs Claude Haiku 4.5 2,100 ms -> 2.9 s vs 4.5 s to first audio.
+
+**Cost per conversation-minute** (Sarvam list prices, 27 Sep 2026: LLM ₹29.28 / ₹73.2 per 1M input / output tokens,
+STT ₹30 per hour, Bulbul v3 ₹30 per 10K characters). Usage measured over the 24 pre-M6 eval conversations, with
+duration estimated as agent speech (Bulbul speaks 13.8–13.9 characters per second, measured) + 3 s of customer
+speech and 2.2 s of latency per turn: ~2.8 turns, 35,030 LLM input tokens, 331 output tokens, 636 TTS characters and
+8 s of STT audio per minute.
+
+| per conversation-minute | ₹ |
+|---|---|
+| LLM | 1.05 |
+| TTS | 1.91 |
+| STT | 0.07 |
+| **total (Sarvam)** | **≈ 3.0** (median call ≈ 3.3 min ≈ ₹10) |
+| with Claude Haiku 4.5 as the LLM | ≈ 3.3 (LLM ≈ ₹1.3 with ~70% of input from the prompt cache; $1 = ₹88) |
+
+Cloud Run adds a small fixed cost (one always-ready instance, CPU billed only during requests), not a per-minute
+one. The biggest lever: TTS is ~60% of the cost — shorter replies cut both cost and latency; input tokens are ~16k per
+LLM call (product cards + knowledge), so provider-side prompt caching (Sarvam lists a cached-input price) would cut
+LLM cost by up to ~60%.
 
 ## M4 — voice UI + first deploy (26 Sep 2026)
 - Short first TTS chunk (`normalize.split_for_tts`): Sarvam time to first audio p50 2.86 s -> 2.23 s, p90 4.68 s
@@ -211,7 +256,31 @@ price_with_disclaimer 0.79 · moves_to_close 0.50 · objection_handled_once 0.86
 - Case 17 (too expensive, twice): still flaky — sometimes re-offers a lower cover in words after the second no.
 
 ## Router miss rate
-_TBD (M2/M3)._
+v1 made a follow-up LLM call when the model needed a section the keyword router hadn't loaded: 0 misses in the M2
+scripted runs. In v2 the router is only a prefetch (sections the customer's words name are preloaded) and the model
+fetches anything else with `get_product_info`, so a "miss" is simply a tool call: 20 tool calls across the 24
+pre-M6 eval conversations, i.e. most turns — price, claims, "which plan" — needed none.
 
 ## Production next steps
-_TBD (M6): telephony, CRM, call recording, DNC checks._
+- **Telephony.** Replace push-to-talk with a phone line: SIP / Exotel / Twilio media streams into the same pipeline,
+  with streaming STT, voice-activity detection and barge-in (stop TTS when the customer speaks). The controller
+  and tools don't change; the turn loop becomes continuous audio.
+- **Latency.** Stream TTS (Bulbul WebSocket) and stream the LLM reply into it sentence by sentence, instead of
+  waiting for the full reply; move to always-on CPU so post-call work (summaries, Sheet writes on tab close) never
+  stalls. First-chunk TTS is still ~40–60% of time to first audio.
+- **CRM instead of a Sheet.** Push each lead (profile, snapshot, quoted ranges, outcome, callback time, transcript
+  link) to the CRM (Salesforce / LeadSquared / Zoho) through its API; create the advisor's callback task with the
+  slot; send the purchase link by SMS / WhatsApp (templated, DLT-registered) from the same event.
+- **Call recording and audit.** Store audio + transcript per session (encrypted, retention policy), announce
+  recording at the start, and keep the prompt / data / model versions used for every call, so any answer can be
+  traced to the brochure page and code version that produced it.
+- **Compliance.** Check the number against India's DND / NCPR registry (TRAI rules) and the company's own
+  do-not-call list before any outbound call; calling-hour limits; consent capture; IRDAI rules for distributors
+  (licensed-entity disclosures, no mis-selling). Human review of a sample of calls every week.
+- **Knowledge ops.** Brochures and premium examples change: a pipeline to re-slice new brochures, re-run
+  `check_integrity.py` and the evals, and gate deploys on the must-pass cases. Replace brochure-example price
+  estimates with insurer rate APIs where available.
+- **Quality.** Grow the eval set from real (anonymised) calls; per-release scorecard trend; human spot checks of the
+  judge. Open issues today: Sarvam sometimes re-offers a lower cover after a second "can't afford it" (case 17).
+- **Security.** Per-user auth instead of one access code, rate limits per user, PII redaction in logs (logs
+  currently hold the full transcript and phone number).

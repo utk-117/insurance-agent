@@ -61,7 +61,8 @@ app/
     tools.py         # v2 tool registry (see v2 DESIGN)
     knowledge.py     # load data/knowledge/*; shortlist() (eligibility + gates + need_fit rank),
                      # route_topics() (topic_router), get_sections(), insurer_notes(), claims_record()
-    actions.py       # share_purchase_link(), log_callback(), log_outcome()
+    actions.py       # queue_purchase_link(), log_callback(), log_outcome()
+    intake.py        # v2 intake slots + code parsers; money.py (amounts in words); tools.py (tool registry)
   normalize.py       # TTS text normalisation (₹, lakh/crore, dates, abbreviations)
   sheets.py          # Google Sheets writer, CSV fallback if creds missing
   cli.py             # text-only chat loop for M2 (same controller, no audio)
@@ -108,7 +109,7 @@ sales conversation.
 ```
 PHASE 1  INTAKE (code-driven)   5 fixed questions -> profile_snapshot() -> eligible plans, max cover, price ranges
 PHASE 2  CONSULT (LLM-driven)   explain what life insurance is for + one intent question, then a free conversation; TOOLS
-PHASE 3  CLOSE (code-guarded)   callback (default) or purchase link; code validates + logs
+PHASE 3  CLOSE (code-guarded)   callback (default) or purchase link sent by message; code validates + logs
 ```
 Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent to 2 minutes (as in v1).
 
@@ -147,11 +148,17 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
   a classifier), and respects a no (after two refusals code blocks further price quotes).
 - When the customer wants to go ahead, **the agent itself explains the next steps** (proposal form on the insurer's
   site, KYC, possible medical tests arranged by the insurer, the insurer's decision). The human advisor is for
-  doubts, and to help complete the purchase when the plan has no purchase page (SNAPSHOT marks `purchase_page`).
+  doubts.
+- **Purchase link by message** (product-owner decision): once the customer has decided, Asha calls
+  `send_purchase_link` without asking again and says she'll send a message with the purchase link to the number
+  they're talking on. Nothing is shown on screen and no URL is stored in the app — the lead row's `purchase_link`
+  column names the plan, and the sales team / a messaging system sends the link. `cards.json.purchase_url` is unused.
 - **Amounts are words, never raw integers** (`app/agent/money.py`): the snapshot, tool results and quoted ranges
   say "₹20 crore", "₹8.61 lakh – ₹13.45 lakh a year"; tools take amounts in words and code parses them; the
   amount the customer mentions is parsed by code into the prompt. (Sarvam misread raw integers by 10x.)
 - Ready "say" lines come from code for across-plan price ranges (pure term only) and the latest-FY claims record.
+- Comparisons lay facts side by side and tie them to what the customer said; never "better", "the best" or
+  "better value" for a plan or insurer (rail 10).
 
 **Tools** (one registry, `app/agent/tools.py`; each returns compact JSON with page/source refs):
 | tool | args | returns |
@@ -163,7 +170,7 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
 | `compare_products` | product_ids[2-3] | cards side by side + price ranges + claims records |
 | `get_process_info` | topic (medical_tests, claims, free_look, disclosure...) | buying_process.md / insurer.md excerpt |
 | `book_callback` | datetime_iso, product_ids[], note, customer_confirmed(bool) | code validates future IST time + confirmation; logs |
-| `share_purchase_link` | product_id | card event to UI (skipped if purchase_url is null) |
+| `send_purchase_link` | product_id | records that this plan's link is to be sent by message; nothing on screen |
 | `end_conversation` | outcome, goodbye, summary | only when the customer signals ending (or after a booking); the goodbye is spoken, no extra LLM call; a 2nd call is a no-op |
 
 **Tool calling per provider** (same registry, same prompt):
@@ -185,8 +192,8 @@ Before PHASE 1: greet, confirm identity ("Am I speaking with {name}?"), consent 
 - Asha mentions the 9 AM–9 PM hours when asking for a callback time.
 - **Never say the customer's phone number.** The number is not in anything the LLM sees; Asha asks them to confirm
   "the number you're talking on" is right. Replies are redacted (phone-like digits -> "your number") as a safety net.
-- `share_purchase_link` only after the customer says they've decided, and only if the plan has a purchase page;
-  offer the advisor call for doubts after.
+- `send_purchase_link` as soon as the customer says they've decided (no second confirmation); offer the advisor
+  call for doubts after.
 - Every session ends with `log_outcome` (also on disconnect/timeout: `dropped`).
 
 ### What goes into each LLM call (v2)
@@ -270,7 +277,7 @@ Later (only after M5 works): barge-in (stop playback when user presses talk), st
   add `llm/anthropic.py`; `scripts/bench.py` comparing Sarvam vs Claude LLM. Target: all "must" cases pass.
 - **M4 Voice web UI**: push-to-talk loop in the browser, agent speaks first, transcript + state side panel.
 - **M5 Integrations**: Google Sheets (share the Sheet with the Cloud Run service account; key file only for local
-  runs), purchase link card, latency panel.
+  runs), purchase link sent by message, latency panel.
 - **M6 Ship**: final Cloud Run deploy, README (setup + run), NOTES.md (approach, challenges, p50/p90 time to
   first audio, estimated cost per conversation-minute, production next steps: telephony, CRM, call recording, DNC checks).
 
@@ -307,7 +314,7 @@ Later (only after M5 works): barge-in (stop playback when user presses talk), st
 **Close (code-guarded)**
 20. Callback "kal shaam 5 baje" -> exact date/time read back -> confirmed -> `book_callback` succeeds -> row logged.
 21. Model tries `book_callback` without confirmation or with a past time -> tool error -> agent asks/reads back.
-22. "I've decided, want to buy" -> purchase link card (if url set) + callback offered.
+22. "I've decided, want to buy" -> purchase link sent by message without asking again + advisor offered for doubts.
 23. Wrong person / not interested (one soft retry) -> polite end, logged.
 
 **Tools / latency**

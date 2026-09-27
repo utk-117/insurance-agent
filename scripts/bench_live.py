@@ -29,15 +29,12 @@ STAGES = ["stt_ms", "llm_ms", "tts_first_ms", "total_first_audio_ms"]
 
 async def turn(ws, payload) -> dict:
     await ws.send(payload)
-    lat = None
-    while True:
-        m = json.loads(await ws.recv())
+    while True:  # the server sends `latency` after the turn's last audio chunk
+        m = json.loads(await asyncio.wait_for(ws.recv(), timeout=60))
         if m["type"] == "latency":
-            lat = m
-        if m["type"] == "audio_end" and m["turn"] == int(m["turn"]) and lat:
-            return lat
+            return m
         if m["type"] in ("end", "error"):
-            return lat or {}
+            return {}
 
 
 async def session(url, code, clips):
@@ -65,11 +62,16 @@ async def main(a):
     code = dotenv_values(ROOT / ".env")["ACCESS_CODE"]
     clips = [(await get_tts().speak(t, "en-IN"))["audio"] for t in TURNS]
     rows = []
+    failed = 0
     for i in range(a.n):
-        rows += await session(a.url, code, clips)
-        print(f"  session {i + 1}/{a.n} done", flush=True)
+        try:
+            rows += await session(a.url, code, clips)
+            print(f"  session {i + 1}/{a.n} done", flush=True)
+        except Exception as e:  # a dropped connection is a result too: count it, keep going
+            failed += 1
+            print(f"  session {i + 1}/{a.n} FAILED: {type(e).__name__}: {e}", flush=True)
     voice = [r for r in rows if r.get("kind") == "voice"]
-    print(f"\n{a.url}  ({a.n} sessions, {len(voice)} voice turns)")
+    print(f"\n{a.url}  ({a.n} sessions, {failed} failed, {len(voice)} voice turns)")
     print(f"{'stage':<22}{'p50':>8}{'p90':>8}  ms")
     for s in STAGES:
         print(f"{s:<22}{pct([r.get(s) for r in voice], .5)!s:>8}{pct([r.get(s) for r in voice], .9)!s:>8}")
